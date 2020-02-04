@@ -103,4 +103,11 @@ export SUBARCH=arm64
 	cp $k/out/arch/arm64/boot/Image.gz-dtb $k/build/Image.gz-dtb
 	cp -a $k/out/firmware $k/build/modules/system/lib/firmware
 	cp -a /usr/lib/modules/4.9.212-kimocoder $k/build/modules/system/lib/modules/
+	rm -rf $k/build/modules/system/lib/modules/4.9.212-kimocoder/build
+	rm -rf $k/build/modules/system/lib/modules/4.9.212-kimocoder/source
 	echo "  Files and folders moved to build/ directory"
+
+# Build the zip for TWRP flashing
+	cd $k/build
+	zip -r OP6_NETHUNTER.zip *
+	echo "  OP6_NETHUNTER.zip was made. Reboot into TWRP and ADB sideload the zip file!"
