@@ -1,5 +1,4 @@
-## NetHunter kernel for OnePlus 6 & 6T
-## Compiled for Android 10.
+## NetHunter kernel for OnePlus 6 & 6T (Android 10)
 
 ### Supports
 * A bunch of USB WiFi adapters
