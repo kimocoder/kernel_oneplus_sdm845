@@ -2,10 +2,17 @@
 
 ### Supports
 * A bunch of USB WiFi adapters
-* Injection patches added
+* A bunch of Bluetooth adapters
+* A bunch of DVB adapters
+* A bunch of SDR adapters
+* A bunch of USB network adapters
+* WiFi injection patches added
 * CAIF network support
+* CAN network support
+* USB supported
 
 ### TODO (coming up)
+* HID support
 
 ### Credits (coming up)
 
