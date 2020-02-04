@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Bash Color
 green='\033[01;32m'
 red='\033[01;31m'
@@ -21,26 +22,25 @@ export SUBARCH=arm64
 # git clone https://gitlab.com/HDTC/gclang.git
 # git clone https://bitbucket.org/xanaxdroid/aarch64-8.0.git
 #
-# In this script: 
+# In this script:
 # You will need to change the 'Source Path to kernel tree' to match your current path to this source.
 # You will need to change the 'Compile Path to out' to match your current path to this source.
 # You will also need to edit the '-j32' under 'Start Compile' section and adjust that to match the amount of cores you want to use to build.
-# 
-# In Makefile: 
+#
+# In Makefile:
 # You will need to edit the 'CROSS_COMPILE=' line to match your current path to this source.
-# 
+#
 ############################################################
 # Build Script Variables
 ############################################################ 
 
 # Kernel version
-        ver=15
+        ver=1
 
 # Toolchain location used to build
 	CC_DIR=/root/toolchains/gclang/bin
 
 # Source defconfig used to build
-	##dc=SD_defconfig
 	dc=nethunter_defconfig
 
 # Source Path to kernel tree
@@ -98,7 +98,6 @@ export SUBARCH=arm64
 	echo "	Build complete!"
 
 # Move files and folders to correct place
-	mkdir $k/build
 	rm -rf $k/build/modules/system/lib/firmware
 	rm -rf $k/build/modules/system/lib/modules/*
 	cp $k/out/arch/arm64/boot/Image.gz-dtb $k/build/Image.gz-dtb
