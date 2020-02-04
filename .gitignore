@@ -1,5 +1,4 @@
 *.orig
 *.rej
-build/
 upload/
 out/

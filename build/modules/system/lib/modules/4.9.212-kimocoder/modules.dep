@@ -1,0 +1,45 @@
+kernel/drivers/net/can/usb/ems_usb.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/usb/esd_usb2.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/usb/gs_usb.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/usb/kvaser_usb.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/usb/peak_usb/peak_usb.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/usb/usb_8dev.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/softing/softing.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/vcan.ko:
+kernel/drivers/net/can/slcan.ko:
+kernel/drivers/net/can/can-dev.ko:
+kernel/drivers/net/can/grcan.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/ifi_canfd/ifi_canfd.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/m_can/m_can.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/net/can/xilinx_can.ko: kernel/drivers/net/can/can-dev.ko
+kernel/drivers/bluetooth/hci_vhci.ko:
+kernel/drivers/bluetooth/bcm203x.ko:
+kernel/drivers/bluetooth/bfusb.ko:
+kernel/drivers/bluetooth/btusb.ko: kernel/drivers/bluetooth/btrtl.ko kernel/drivers/bluetooth/btbcm.ko kernel/drivers/bluetooth/btintel.ko
+kernel/drivers/bluetooth/btintel.ko:
+kernel/drivers/bluetooth/ath3k.ko:
+kernel/drivers/bluetooth/btmrvl.ko:
+kernel/drivers/bluetooth/btbcm.ko:
+kernel/drivers/bluetooth/btrtl.ko:
+kernel/drivers/staging/comedi/comedi_usb.ko: kernel/drivers/staging/comedi/comedi.ko
+kernel/drivers/staging/comedi/comedi.ko:
+kernel/drivers/staging/comedi/kcomedilib/kcomedilib.ko: kernel/drivers/staging/comedi/comedi.ko
+kernel/drivers/staging/comedi/drivers/comedi_8255.ko: kernel/drivers/staging/comedi/comedi.ko
+kernel/drivers/staging/comedi/drivers/8255.ko: kernel/drivers/staging/comedi/drivers/comedi_8255.ko kernel/drivers/staging/comedi/comedi.ko
+kernel/drivers/staging/rtl8192u/r8192u_usb.ko:
+kernel/drivers/staging/rtl8192e/rtllib.ko:
+kernel/drivers/staging/rtl8192e/rtllib_crypt_ccmp.ko:
+kernel/drivers/staging/rtl8192e/rtllib_crypt_tkip.ko:
+kernel/drivers/staging/rtl8192e/rtllib_crypt_wep.ko:
+kernel/drivers/staging/rtl8192e/rtl8192e/r8192e_pci.ko: kernel/drivers/staging/rtl8192e/rtllib.ko
+kernel/net/bluetooth/rfcomm/rfcomm.ko:
+kernel/net/bluetooth/bnep/bnep.ko:
+kernel/net/bluetooth/hidp/hidp.ko:
+kernel/net/can/can.ko:
+kernel/net/can/can-raw.ko: kernel/net/can/can.ko
+kernel/net/can/can-bcm.ko: kernel/net/can/can.ko
+kernel/net/can/can-gw.ko: kernel/net/can/can.ko
+kernel/net/caif/caif.ko:
+kernel/net/caif/chnl_net.ko: kernel/net/caif/caif.ko
+kernel/net/caif/caif_socket.ko: kernel/net/caif/caif.ko
+kernel/net/caif/caif_usb.ko: kernel/net/caif/caif.ko

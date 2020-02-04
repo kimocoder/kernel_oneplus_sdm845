@@ -98,6 +98,7 @@ export SUBARCH=arm64
 	echo "	Build complete!"
 
 # Move files and folders to correct place
+	mkdir $k/build
 	rm -rf $k/build/modules/system/lib/firmware
 	rm -rf $k/build/modules/system/lib/modules/*
 	cp $k/out/arch/arm64/boot/Image.gz-dtb $k/build/Image.gz-dtb

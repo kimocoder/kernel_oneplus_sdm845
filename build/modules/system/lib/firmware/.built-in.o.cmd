@@ -1,0 +1,1 @@
+cmd_firmware/built-in.o :=  /root/toolchains/aarch64-8.0/bin/aarch64-linux-android-ld -EL    -r -o firmware/built-in.o firmware/kaweth/new_code.bin.gen.o firmware/kaweth/trigger_code.bin.gen.o firmware/kaweth/new_code_fix.bin.gen.o firmware/kaweth/trigger_code_fix.bin.gen.o ; scripts/mod/modpost firmware/built-in.o
