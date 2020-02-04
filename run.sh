@@ -81,8 +81,10 @@ export SUBARCH=arm64
 ############################################################
 
 	echo "	Establishing build environment.."
-	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- "$dc" menuconfig
-	cp $dc/.config arch/arm64/configs/nethunter_defconfig
+	cp $k/arch/arm64/configs/nethunter_defconfig $k/.config
+	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- menuconfig
+	cp $k/.config arch/arm64/configs/nethunter_defconfig
+	rm -rf .config
 	echo "** DEFCONFIG saved!"
 
 ############################################################
@@ -94,3 +96,11 @@ export SUBARCH=arm64
 	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- modules_install
 	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- firmware_install
 	echo "	Build complete!"
+
+# Move files and folders to correct place
+	rm -rf $k/build/modules/system/lib/firmware
+	rm -rf $k/build/modules/system/lib/modules/*
+	cp $k/out/arch/arm64/boot/Image.gz-dtb $k/build/Image.gz-dtb
+	cp -a $k/out/firmware $k/build/modules/system/lib/firmware
+	cp -a /usr/lib/modules/4.9.212-kimocoder $k/build/modules/system/lib/modules/
+	echo "  Files and folders moved to build/ directory"
