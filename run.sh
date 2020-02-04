@@ -90,7 +90,7 @@ export SUBARCH=arm64
 ############################################################
 
 	echo "	Starting first build.."
-	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- $th
+	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- CONFIG_DEBUG_SECTION_MISMATCH=y $th
 	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- modules_install
 	make "$o" CC=${CC_DIR}/clang CLANG_TRIPLE=aarch64-linux-gnu- firmware_install
 	echo "	Build complete!"
