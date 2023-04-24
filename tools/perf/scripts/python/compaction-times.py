@@ -31,7 +31,7 @@ class comm_filter:
 
 	def filter(self, pid, comm):
 		m = self.re.search(comm)
-		return m == None or m.group() == ""
+		return m is None or m.group() == ""
 
 class pid_filter:
 	def __init__(self, low, high):
@@ -39,7 +39,7 @@ class pid_filter:
 		self.high = (0 if high == "" else int(high))
 
 	def filter(self, pid, comm):
-		return not (pid >= self.low and (self.high == 0 or pid <= self.high))
+		return pid < self.low or self.high != 0 and pid > self.high
 
 def set_type(t):
 	global opt_disp
@@ -82,15 +82,15 @@ class cnode:
 
 	def __str__(self):
 		prev = 0
-		s = "%s " % time(self.ns)
+		s = f"{time(self.ns)} "
 		if (opt_disp & topt.DISP_MIG):
-			s += "migration: %s" % self.migrated
+			s += f"migration: {self.migrated}"
 			prev = 1
 		if (opt_disp & topt.DISP_ISOLFREE):
-			s += "%sfree_scanner: %s" % (" " if prev else "", self.fscan)
+			s += f'{" " if prev else ""}free_scanner: {self.fscan}'
 			prev = 1
 		if (opt_disp & topt.DISP_ISOLMIG):
-			s += "%smigration_scanner: %s" % (" " if prev else "", self.mscan)
+			s += f'{" " if prev else ""}migration_scanner: {self.mscan}'
 		return s
 
 	def complete(self, secs, nsecs):
@@ -273,39 +273,36 @@ if argc >= 1:
 
 	for i, opt in enumerate(sys.argv[1:]):
 		if opt[0] == "-":
-			if opt == "-h":
+			if opt == '-u':
+				opt_ns = False
+			elif opt == "-fs":
+				set_type(topt.DISP_ISOLFREE)
+			elif opt == "-h":
 				pr_help()
 				exit(0);
+			elif opt == "-m":
+				set_type(topt.DISP_MIG)
+			elif opt == "-ms":
+				set_type(topt.DISP_ISOLMIG)
 			elif opt == "-p":
 				opt_proc = popt.DISP_PROC
 			elif opt == "-pv":
 				opt_proc = popt.DISP_PROC_VERBOSE
-			elif opt == '-u':
-				opt_ns = False
 			elif opt == "-t":
 				set_type(topt.DISP_TIME)
-			elif opt == "-m":
-				set_type(topt.DISP_MIG)
-			elif opt == "-fs":
-				set_type(topt.DISP_ISOLFREE)
-			elif opt == "-ms":
-				set_type(topt.DISP_ISOLMIG)
 			else:
 				sys.exit(usage)
 
 		elif i == argc - 1:
 			m = pid_re.search(opt)
-			if m != None and m.group() != "":
-				if m.group(3) != None:
-					f = pid_filter(m.group(3), m.group(3))
-				else:
-					f = pid_filter(m.group(1), m.group(2))
-			else:
+			if m is None or m.group() == "":
 				try:
 					comm_re=re.compile(opt)
 				except:
-					sys.stderr.write("invalid regex '%s'" % opt)
+					sys.stderr.write(f"invalid regex '{opt}'")
 					sys.exit(usage)
 				f = comm_filter(comm_re)
 
+			else:
+				f = pid_filter(m[3], m[3]) if m[3] != None else pid_filter(m[1], m[2])
 			chead.add_filter(f)

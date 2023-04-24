@@ -333,8 +333,7 @@ def get_filters():
     be able to distinguish the events.
 
     """
-    filters = {}
-    filters['kvm_userspace_exit'] = ('reason', USERSPACE_EXIT_REASONS)
+    filters = {'kvm_userspace_exit': ('reason', USERSPACE_EXIT_REASONS)}
     if ARCH.exit_reasons:
         filters['kvm_exit'] = ('exit_reason', ARCH.exit_reasons)
     return filters
@@ -468,13 +467,7 @@ class Event(object):
 
         event_attr = self.setup_event_attribute(trace_set, trace_point)
 
-        # First event will be group leader.
-        group_leader = -1
-
-        # All others have to pass the leader's descriptor instead.
-        if group.events:
-            group_leader = group.events[0].fd
-
+        group_leader = group.events[0].fd if group.events else -1
         fd = perf_event_open(event_attr, trace_pid,
                              trace_cpu, group_leader, 0)
         if fd == -1:
@@ -543,8 +536,7 @@ class TracepointProvider(object):
         for field in fields:
             if field in self.filters:
                 filter_name_, filter_dicts = self.filters[field]
-                for name in filter_dicts:
-                    extra.append(field + '(' + name + ')')
+                extra.extend(f'{field}({name})' for name in filter_dicts)
         fields += extra
         return fields
 
@@ -580,8 +572,7 @@ class TracepointProvider(object):
             for name in self._fields:
                 tracepoint = name
                 tracefilter = None
-                match = re.match(r'(.*)\((.*)\)', name)
-                if match:
+                if match := re.match(r'(.*)\((.*)\)', name):
                     tracepoint, sub = match.groups()
                     tracefilter = ('%s==%d\0' %
                                    (self.filters[tracepoint][0],
@@ -621,11 +612,8 @@ class TracepointProvider(object):
                 if event.name in fields:
                     event.reset()
                     event.enable()
-                else:
-                    # Do not disable the group leader.
-                    # It would disable all of its events.
-                    if index != 0:
-                        event.disable()
+                elif index != 0:
+                    event.disable()
 
     @property
     def pid(self):
@@ -687,7 +675,7 @@ class DebugfsProvider(object):
             if len(vms) == 0:
                 self.do_read = False
 
-            self.paths = filter(lambda x: "{}-".format(pid) in x, vms)
+            self.paths = filter(lambda x: f"{pid}-" in x, vms)
 
         else:
             self.paths = ['']
@@ -736,9 +724,11 @@ class Stats(object):
     def update_provider_filters(self):
         """Propagates fields filters to providers."""
         def wanted(key):
-            if not self._fields_filter:
-                return True
-            return re.match(self._fields_filter, key) is not None
+            return (
+                re.match(self._fields_filter, key) is not None
+                if self._fields_filter
+                else True
+            )
 
         # As we reset the counters when updating the fields we can
         # also clear the cache of old values.
@@ -853,10 +843,8 @@ class Tui(object):
         row = 3
         stats = self.stats.get()
         def sortkey(x):
-            if stats[x][1]:
-                return (-stats[x][1], -stats[x][0])
-            else:
-                return (0, -stats[x][0])
+            return (-stats[x][1], -stats[x][0]) if stats[x][1] else (0, -stats[x][0])
+
         for key in sorted(stats.keys(), key=sortkey):
 
             if row >= self.screen.getmaxyx()[0]:
@@ -924,16 +912,12 @@ class Tui(object):
             try:
                 pid = int(pid)
 
-                if pid == 0:
-                    self.update_pid(pid)
-                    break
-                else:
-                    if not os.path.isdir(os.path.join('/proc/', str(pid))):
-                        continue
-                    else:
-                        self.update_pid(pid)
-                        break
-
+                if pid != 0 and not os.path.isdir(
+                    os.path.join('/proc/', str(pid))
+                ):
+                    continue
+                self.update_pid(pid)
+                break
             except ValueError:
                 continue
 
@@ -1011,12 +995,12 @@ Requirements:
   the large number of files that are possibly opened.
 """
 
+
+
     class PlainHelpFormatter(optparse.IndentedHelpFormatter):
         def format_description(self, description):
-            if description:
-                return description + "\n"
-            else:
-                return ""
+            return description + "\n" if description else ""
+
 
     optparser = optparse.OptionParser(description=description_text,
                                       formatter=PlainHelpFormatter())
@@ -1068,7 +1052,7 @@ def get_providers(options):
         providers.append(TracepointProvider())
     if options.debugfs:
         providers.append(DebugfsProvider())
-    if len(providers) == 0:
+    if not providers:
         providers.append(TracepointProvider())
 
     return providers

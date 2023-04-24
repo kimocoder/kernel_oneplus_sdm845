@@ -63,11 +63,9 @@ def cpu_mask_invalidate(event):
 
 def cpu_list(mask_name):
     global cpu_mask
-    mask = None
-    if mask_name in cpu_mask:
-        mask = cpu_mask[mask_name]
+    mask = cpu_mask[mask_name] if mask_name in cpu_mask else None
     if mask is None:
-        mask = gdb.parse_and_eval(mask_name + ".bits")
+        mask = gdb.parse_and_eval(f"{mask_name}.bits")
         if hasattr(gdb, 'events'):
             cpu_mask[mask_name] = mask
             gdb.events.stop.connect(cpu_mask_invalidate)
@@ -101,23 +99,19 @@ def cpu_list(mask_name):
 
 
 def each_online_cpu():
-    for cpu in cpu_list("__cpu_online_mask"):
-        yield cpu
+    yield from cpu_list("__cpu_online_mask")
 
 
 def each_present_cpu():
-    for cpu in cpu_list("__cpu_present_mask"):
-        yield cpu
+    yield from cpu_list("__cpu_present_mask")
 
 
 def each_possible_cpu():
-    for cpu in cpu_list("__cpu_possible_mask"):
-        yield cpu
+    yield from cpu_list("__cpu_possible_mask")
 
 
 def each_active_cpu():
-    for cpu in cpu_list("__cpu_active_mask"):
-        yield cpu
+    yield from cpu_list("__cpu_active_mask")
 
 
 class LxCpus(gdb.Command):
@@ -130,10 +124,10 @@ and can help identify the state of hotplugged CPUs"""
         super(LxCpus, self).__init__("lx-cpus", gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
-        gdb.write("Possible CPUs : {}\n".format(list(each_possible_cpu())))
-        gdb.write("Present CPUs  : {}\n".format(list(each_present_cpu())))
-        gdb.write("Online CPUs   : {}\n".format(list(each_online_cpu())))
-        gdb.write("Active CPUs   : {}\n".format(list(each_active_cpu())))
+        gdb.write(f"Possible CPUs : {list(each_possible_cpu())}\n")
+        gdb.write(f"Present CPUs  : {list(each_present_cpu())}\n")
+        gdb.write(f"Online CPUs   : {list(each_online_cpu())}\n")
+        gdb.write(f"Active CPUs   : {list(each_active_cpu())}\n")
 
 LxCpus()
 
@@ -149,7 +143,7 @@ Note that VAR has to be quoted as string."""
         super(PerCpu, self).__init__("lx_per_cpu")
 
     def invoke(self, var_name, cpu=-1):
-        var_ptr = gdb.parse_and_eval("&" + var_name.string())
+        var_ptr = gdb.parse_and_eval(f"&{var_name.string()}")
         return per_cpu(var_ptr, cpu)
 
 

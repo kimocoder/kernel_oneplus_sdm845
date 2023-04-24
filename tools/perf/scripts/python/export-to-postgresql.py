@@ -247,11 +247,7 @@ if (len(sys.argv) < 2):
 
 dbname = sys.argv[1]
 
-if (len(sys.argv) >= 3):
-	columns = sys.argv[2]
-else:
-	columns = "all"
-
+columns = sys.argv[2] if (len(sys.argv) >= 3) else "all"
 if columns not in ("all", "branches"):
 	usage()
 
@@ -265,13 +261,13 @@ for i in range(3,len(sys.argv)):
 	else:
 		usage()
 
-output_dir_name = os.getcwd() + "/" + dbname + "-perf-data"
+output_dir_name = f"{os.getcwd()}/{dbname}-perf-data"
 os.mkdir(output_dir_name)
 
 def do_query(q, s):
 	if (q.exec_(s)):
 		return
-	raise Exception("Query failed: " + q.lastError().text())
+	raise Exception(f"Query failed: {q.lastError().text()}")
 
 print datetime.datetime.today(), "Creating database..."
 
@@ -507,7 +503,7 @@ file_header = struct.pack("!11sii", "PGCOPY\n\377\r\n\0", 0, 0)
 file_trailer = "\377\377"
 
 def open_output_file(file_name):
-	path_name = output_dir_name + "/" + file_name
+	path_name = f"{output_dir_name}/{file_name}"
 	file = open(path_name, "w+")
 	file.write(file_header)
 	return file
@@ -518,17 +514,17 @@ def close_output_file(file):
 
 def copy_output_file_direct(file, table_name):
 	close_output_file(file)
-	sql = "COPY " + table_name + " FROM '" + file.name + "' (FORMAT 'binary')"
+	sql = f"COPY {table_name} FROM '{file.name}' (FORMAT 'binary')"
 	do_query(query, sql)
 
 # Use COPY FROM STDIN because security may prevent postgres from accessing the files directly
 def copy_output_file(file, table_name):
-	conn = PQconnectdb("dbname = " + dbname)
+	conn = PQconnectdb(f"dbname = {dbname}")
 	if (PQstatus(conn)):
 		raise Exception("COPY FROM STDIN PQconnectdb failed")
 	file.write(file_trailer)
 	file.seek(0)
-	sql = "COPY " + table_name + " FROM STDIN (FORMAT 'binary')"
+	sql = f"COPY {table_name} FROM STDIN (FORMAT 'binary')"
 	res = PQexec(conn, sql)
 	if (PQresultStatus(res) != 4):
 		raise Exception("COPY FROM STDIN PQexec failed")
@@ -536,11 +532,11 @@ def copy_output_file(file, table_name):
 	while (len(data)):
 		ret = PQputCopyData(conn, data, len(data))
 		if (ret != 1):
-			raise Exception("COPY FROM STDIN PQputCopyData failed, error " + str(ret))
+			raise Exception(f"COPY FROM STDIN PQputCopyData failed, error {str(ret)}")
 		data = file.read(65536)
 	ret = PQputCopyEnd(conn, None)
 	if (ret != 1):
-		raise Exception("COPY FROM STDIN PQputCopyEnd failed, error " + str(ret))
+		raise Exception(f"COPY FROM STDIN PQputCopyEnd failed, error {str(ret)}")
 	PQfinish(conn)
 
 def remove_output_file(file):
@@ -670,13 +666,13 @@ def sched__sched_switch(*x):
 
 def evsel_table(evsel_id, evsel_name, *x):
 	n = len(evsel_name)
-	fmt = "!hiqi" + str(n) + "s"
+	fmt = f"!hiqi{n}s"
 	value = struct.pack(fmt, 2, 8, evsel_id, n, evsel_name)
 	evsel_file.write(value)
 
 def machine_table(machine_id, pid, root_dir, *x):
 	n = len(root_dir)
-	fmt = "!hiqiii" + str(n) + "s"
+	fmt = f"!hiqiii{n}s"
 	value = struct.pack(fmt, 3, 8, machine_id, 4, pid, n, root_dir)
 	machine_file.write(value)
 
@@ -686,7 +682,7 @@ def thread_table(thread_id, machine_id, process_id, pid, tid, *x):
 
 def comm_table(comm_id, comm_str, *x):
 	n = len(comm_str)
-	fmt = "!hiqi" + str(n) + "s"
+	fmt = f"!hiqi{n}s"
 	value = struct.pack(fmt, 2, 8, comm_id, n, comm_str)
 	comm_file.write(value)
 
@@ -699,19 +695,19 @@ def dso_table(dso_id, machine_id, short_name, long_name, build_id, *x):
 	n1 = len(short_name)
 	n2 = len(long_name)
 	n3 = len(build_id)
-	fmt = "!hiqiqi" + str(n1) + "si"  + str(n2) + "si" + str(n3) + "s"
+	fmt = f"!hiqiqi{n1}si{n2}si{n3}s"
 	value = struct.pack(fmt, 5, 8, dso_id, 8, machine_id, n1, short_name, n2, long_name, n3, build_id)
 	dso_file.write(value)
 
 def symbol_table(symbol_id, dso_id, sym_start, sym_end, binding, symbol_name, *x):
 	n = len(symbol_name)
-	fmt = "!hiqiqiqiqiii" + str(n) + "s"
+	fmt = f"!hiqiqiqiqiii{n}s"
 	value = struct.pack(fmt, 6, 8, symbol_id, 8, dso_id, 8, sym_start, 8, sym_end, 4, binding, n, symbol_name)
 	symbol_file.write(value)
 
 def branch_type_table(branch_type, name, *x):
 	n = len(name)
-	fmt = "!hiii" + str(n) + "s"
+	fmt = f"!hiii{n}s"
 	value = struct.pack(fmt, 2, 4, branch_type, n, name)
 	branch_type_file.write(value)
 

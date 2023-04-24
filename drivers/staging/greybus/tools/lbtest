@@ -60,42 +60,40 @@ def usage():
 
 def read_sysfs_int(path):
 	try:
-		f = open(path, "r");
-		val = f.read();
-		f.close()
+		with open(path, "r") as f:
+			val = f.read();
 		return int(val)
 	except IOError as e:
 		print("I/O error({0}): {1}".format(e.errno, e.strerror))
-		print("Invalid path %s" % path)
+		print(f"Invalid path {path}")
 
 def write_sysfs_val(path, val):
 	try:
-		f = open(path, "r+")
-		f.write(val)
-		f.close()
+		with open(path, "r+") as f:
+			f.write(val)
 	except IOError as e:
 		print("I/O error({0}): {1}".format(e.errno, e.strerror))
-		print("Invalid path %s" % path)
+		print(f"Invalid path {path}")
 
 def log_csv(test_name, size, iteration_max, sys_pfx):
 	# file name will test_name_size_iteration_max.csv
 	# every time the same test with the same parameters is run we will then
 	# append to the same CSV with datestamp - representing each test dataset
-	fname = test_name + '_' + size + '_' + str(iteration_max) + '.csv'
+	fname = f'{test_name}_{size}_{str(iteration_max)}.csv'
 
 	try:
 		# gather data set
 		date = str(datetime.datetime.now())
-		error = read_sysfs_int(sys_pfx + 'error')
-		request_min = read_sysfs_int(sys_pfx + 'requests_per_second_min')
-		request_max = read_sysfs_int(sys_pfx + 'requests_per_second_max')
-		request_avg = read_sysfs_int(sys_pfx + 'requests_per_second_avg')
-		latency_min = read_sysfs_int(sys_pfx + 'latency_min')
-		latency_max = read_sysfs_int(sys_pfx + 'latency_max')
-		latency_avg = read_sysfs_int(sys_pfx + 'latency_avg')
-		throughput_min = read_sysfs_int(sys_pfx + 'throughput_min')
-		throughput_max = read_sysfs_int(sys_pfx + 'throughput_max')
-		throughput_avg = read_sysfs_int(sys_pfx + 'throughput_avg')
+		error = read_sysfs_int(f'{sys_pfx}error')
+		request_min = read_sysfs_int(f'{sys_pfx}requests_per_second_min')
+		request_max = read_sysfs_int(f'{sys_pfx}requests_per_second_max')
+		request_avg = read_sysfs_int(f'{sys_pfx}requests_per_second_avg')
+		latency_min = read_sysfs_int(f'{sys_pfx}latency_min')
+		latency_max = read_sysfs_int(f'{sys_pfx}latency_max')
+		latency_avg = read_sysfs_int(f'{sys_pfx}latency_avg')
+		throughput_min = read_sysfs_int(f'{sys_pfx}throughput_min')
+		throughput_max = read_sysfs_int(f'{sys_pfx}throughput_max')
+		throughput_avg = read_sysfs_int(f'{sys_pfx}throughput_avg')
 
 		# derive jitter
 		request_jitter = request_max - request_min
@@ -117,15 +115,15 @@ def loopback_run(test_name, size, iteration_max, sys_pfx):
 	test_id = dict[test_name]
 	try:
 		# Terminate any currently running test
-		write_sysfs_val(sys_pfx + 'type', '0')
+		write_sysfs_val(f'{sys_pfx}type', '0')
 		# Set parameter for no wait between messages
-		write_sysfs_val(sys_pfx + 'ms_wait', '0')
+		write_sysfs_val(f'{sys_pfx}ms_wait', '0')
 		# Set operation size
-		write_sysfs_val(sys_pfx + 'size', size)
+		write_sysfs_val(f'{sys_pfx}size', size)
 		# Set iterations
-		write_sysfs_val(sys_pfx + 'iteration_max', str(iteration_max))
+		write_sysfs_val(f'{sys_pfx}iteration_max', str(iteration_max))
 		# Initiate by setting loopback operation type
-		write_sysfs_val(sys_pfx + 'type', test_id)
+		write_sysfs_val(f'{sys_pfx}type', test_id)
 		time.sleep(1)
 
 		if iteration_max == 0:
@@ -136,7 +134,7 @@ def loopback_run(test_name, size, iteration_max, sys_pfx):
 		err = 0
 		while True:
 			# get current count bail out if it hasn't changed
-			iteration_count = read_sysfs_int(sys_pfx + 'iteration_count')
+			iteration_count = read_sysfs_int(f'{sys_pfx}iteration_count')
 			if previous == iteration_count:
 				err = 1
 				break
@@ -144,16 +142,19 @@ def loopback_run(test_name, size, iteration_max, sys_pfx):
 				break
 			previous = iteration_count
 			if verbose:
-				print('%02d%% complete %d of %d ' %
-					(100 * iteration_count / iteration_max,
-					iteration_count, iteration_max))
+				print(
+					(
+						'%02d%% complete %d of %d '
+						% (100 * previous / iteration_max, previous, iteration_max)
+					)
+				)
 			time.sleep(1)
 		if err:
 			print ('\nError executing test\n')
 		else:
 			log_csv(test_name, size, iteration_max, sys_pfx)
 	except ValueError as ve:
-		print("Error: %s " % format(e.strerror), file=sys.stderr)
+		print(f"Error: {format(e.strerror)} ", file=sys.stderr)
 		abort()
 
 def main():

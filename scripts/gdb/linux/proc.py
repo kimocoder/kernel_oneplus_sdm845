@@ -53,11 +53,8 @@ def get_resources(resource, depth):
     while resource:
         yield resource, depth
 
-        child = resource['child']
-        if child:
-            for res, deep in get_resources(child, depth + 1):
-                yield res, deep
-
+        if child := resource['child']:
+            yield from get_resources(child, depth + 1)
         resource = resource['sibling']
 
 
@@ -106,11 +103,7 @@ LxIOPorts()
 #  /proc/mounts
 
 def info_opts(lst, opt):
-    opts = ""
-    for key, string in lst.items():
-        if opt & key:
-            opts += string
-    return opts
+    return "".join(string for key, string in lst.items() if opt & key)
 
 
 FS_INFO = {constants.LX_MS_SYNCHRONOUS: ",sync",
@@ -155,8 +148,7 @@ values of that process namespace"""
 
         task = tasks.get_task_by_pid(pid)
         if not task:
-            raise gdb.GdbError("Couldn't find a process with PID {}"
-                               .format(pid))
+            raise gdb.GdbError(f"Couldn't find a process with PID {pid}")
 
         namespace = task['nsproxy']['mnt_ns']
         if not namespace:
@@ -186,12 +178,7 @@ values of that process namespace"""
             rd = "ro" if (s_flags & constants.LX_MS_RDONLY) else "rw"
 
             gdb.write(
-                "{} {} {} {}{}{} 0 0\n"
-                .format(devname,
-                        pathname,
-                        fstype,
-                        rd,
-                        info_opts(FS_INFO, s_flags),
-                        info_opts(MNT_INFO, m_flags)))
+                f"{devname} {pathname} {fstype} {rd}{info_opts(FS_INFO, s_flags)}{info_opts(MNT_INFO, m_flags)} 0 0\n"
+            )
 
 LxMounts()

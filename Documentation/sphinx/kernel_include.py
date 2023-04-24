@@ -63,10 +63,10 @@ class KernelInclude(Include):
             os.path.expandvars(self.arguments[0]))
 
         # to get a bit security back, prohibit /etc:
-        if path.startswith(os.sep + "etc"):
+        if path.startswith(f"{os.sep}etc"):
             raise self.severe(
-                'Problems with "%s" directive, prohibited path: %s'
-                % (self.name, path))
+                f'Problems with "{self.name}" directive, prohibited path: {path}'
+            )
 
         self.arguments[0] = path
 
@@ -82,7 +82,7 @@ class KernelInclude(Include):
         # the filesystem tree where the reST document is placed.
 
         if not self.state.document.settings.file_insertion_enabled:
-            raise self.warning('"%s" directive disabled.' % self.name)
+            raise self.warning(f'"{self.name}" directive disabled.')
         source = self.state_machine.input_lines.source(
             self.lineno - self.state_machine.input_offset - 1)
         source_dir = os.path.dirname(os.path.abspath(source))
@@ -124,18 +124,14 @@ class KernelInclude(Include):
         except UnicodeError as error:
             raise self.severe('Problem with "%s" directive:\n%s' %
                               (self.name, ErrorString(error)))
-        # start-after/end-before: no restrictions on newlines in match-text,
-        # and no restrictions on matching inside lines vs. line boundaries
-        after_text = self.options.get('start-after', None)
-        if after_text:
+        if after_text := self.options.get('start-after', None):
             # skip content in rawtext before *and incl.* a matching text
             after_index = rawtext.find(after_text)
             if after_index < 0:
                 raise self.severe('Problem with "start-after" option of "%s" '
                                   'directive:\nText not found.' % self.name)
             rawtext = rawtext[after_index + len(after_text):]
-        before_text = self.options.get('end-before', None)
-        if before_text:
+        if before_text := self.options.get('end-before', None):
             # skip content in rawtext after *and incl.* a matching text
             before_index = rawtext.find(before_text)
             if before_index < 0:
@@ -147,10 +143,7 @@ class KernelInclude(Include):
                                                   convert_whitespace=True)
         if 'literal' in self.options:
             # Convert tabs to spaces, if `tab_width` is positive.
-            if tab_width >= 0:
-                text = rawtext.expandtabs(tab_width)
-            else:
-                text = rawtext
+            text = rawtext.expandtabs(tab_width) if tab_width >= 0 else rawtext
             literal_block = nodes.literal_block(rawtext, source=path,
                                     classes=self.options.get('class', []))
             literal_block.line = 1

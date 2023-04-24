@@ -201,12 +201,14 @@ class SystemValues:
 		self.hostname = platform.node()
 		if(self.hostname == ''):
 			self.hostname = 'localhost'
-		rtc = "rtc0"
-		if os.path.exists('/dev/rtc'):
-			rtc = os.readlink('/dev/rtc')
-		rtc = '/sys/class/rtc/'+rtc
-		if os.path.exists(rtc) and os.path.exists(rtc+'/date') and \
-			os.path.exists(rtc+'/time') and os.path.exists(rtc+'/wakealarm'):
+		rtc = os.readlink('/dev/rtc') if os.path.exists('/dev/rtc') else "rtc0"
+		rtc = f'/sys/class/rtc/{rtc}'
+		if (
+			os.path.exists(rtc)
+			and os.path.exists(f'{rtc}/date')
+			and os.path.exists(f'{rtc}/time')
+			and os.path.exists(f'{rtc}/wakealarm')
+		):
 			self.rtcpath = rtc
 		if (hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()):
 			self.ansi = True
@@ -215,14 +217,12 @@ class SystemValues:
 			return
 		self.timeformat = '%.{0}f'.format(num)
 	def setOutputFile(self):
-		if((self.htmlfile == '') and (self.dmesgfile != '')):
-			m = re.match('(?P<name>.*)_dmesg\.txt$', self.dmesgfile)
-			if(m):
-				self.htmlfile = m.group('name')+'.html'
-		if((self.htmlfile == '') and (self.ftracefile != '')):
-			m = re.match('(?P<name>.*)_ftrace\.txt$', self.ftracefile)
-			if(m):
-				self.htmlfile = m.group('name')+'.html'
+		if ((self.htmlfile == '') and (self.dmesgfile != '')):
+			if m := re.match('(?P<name>.*)_dmesg\.txt$', self.dmesgfile):
+				self.htmlfile = m['name'] + '.html'
+		if ((self.htmlfile == '') and (self.ftracefile != '')):
+			if m := re.match('(?P<name>.*)_ftrace\.txt$', self.ftracefile):
+				self.htmlfile = m['name'] + '.html'
 		if(self.htmlfile == ''):
 			self.htmlfile = 'output.html'
 	def initTestOutput(self, subdir, testpath=''):
@@ -233,40 +233,36 @@ class SystemValues:
 		testtime = n.strftime('suspend-%m%d%y-%H%M%S')
 		if not testpath:
 			testpath = n.strftime('suspend-%y%m%d-%H%M%S')
-		if(subdir != "."):
-			self.testdir = subdir+"/"+testpath
-		else:
-			self.testdir = testpath
-		self.teststamp = \
-			'# '+testtime+' '+self.prefix+' '+self.suspendmode+' '+kver
-		if(self.embedded):
-			self.dmesgfile = \
-				'/tmp/'+testtime+'_'+self.suspendmode+'_dmesg.txt'
-			self.ftracefile = \
-				'/tmp/'+testtime+'_'+self.suspendmode+'_ftrace.txt'
+		self.testdir = f"{subdir}/{testpath}" if (subdir != ".") else testpath
+		self.teststamp = f'# {testtime} {self.prefix} {self.suspendmode} {kver}'
+		if self.embedded:
+			self.dmesgfile = f'/tmp/{testtime}_{self.suspendmode}_dmesg.txt'
+			self.ftracefile = f'/tmp/{testtime}_{self.suspendmode}_ftrace.txt'
 			return
-		self.dmesgfile = \
-			self.testdir+'/'+self.prefix+'_'+self.suspendmode+'_dmesg.txt'
-		self.ftracefile = \
-			self.testdir+'/'+self.prefix+'_'+self.suspendmode+'_ftrace.txt'
-		self.htmlfile = \
-			self.testdir+'/'+self.prefix+'_'+self.suspendmode+'.html'
+		self.dmesgfile = f'{self.testdir}/{self.prefix}_{self.suspendmode}_dmesg.txt'
+		self.ftracefile = f'{self.testdir}/{self.prefix}_{self.suspendmode}_ftrace.txt'
+		self.htmlfile = f'{self.testdir}/{self.prefix}_{self.suspendmode}.html'
 		if not os.path.isdir(self.testdir):
 			os.mkdir(self.testdir)
 	def setDeviceFilter(self, devnames):
 		self.devicefilter = string.split(devnames)
 	def rtcWakeAlarmOn(self):
-		os.system('echo 0 > '+self.rtcpath+'/wakealarm')
-		outD = open(self.rtcpath+'/date', 'r').read().strip()
-		outT = open(self.rtcpath+'/time', 'r').read().strip()
+		os.system(f'echo 0 > {self.rtcpath}/wakealarm')
+		outD = open(f'{self.rtcpath}/date', 'r').read().strip()
+		outT = open(f'{self.rtcpath}/time', 'r').read().strip()
 		mD = re.match('^(?P<y>[0-9]*)-(?P<m>[0-9]*)-(?P<d>[0-9]*)', outD)
 		mT = re.match('^(?P<h>[0-9]*):(?P<m>[0-9]*):(?P<s>[0-9]*)', outT)
-		if(mD and mT):
+		if (mD and mT):
 			# get the current time from hardware
 			utcoffset = int((datetime.now() - datetime.utcnow()).total_seconds())
-			dt = datetime(\
-				int(mD.group('y')), int(mD.group('m')), int(mD.group('d')),
-				int(mT.group('h')), int(mT.group('m')), int(mT.group('s')))
+			dt = datetime(
+				int(mD['y']),
+				int(mD['m']),
+				int(mD['d']),
+				int(mT['h']),
+				int(mT['m']),
+				int(mT['s']),
+			)
 			nowtime = int(dt.strftime('%s')) + utcoffset
 		else:
 			# if hardware time fails, use the software time
@@ -274,7 +270,7 @@ class SystemValues:
 		alarm = nowtime + self.rtcwaketime
 		os.system('echo %d > %s/wakealarm' % (alarm, self.rtcpath))
 	def rtcWakeAlarmOff(self):
-		os.system('echo 0 > %s/wakealarm' % self.rtcpath)
+		os.system(f'echo 0 > {self.rtcpath}/wakealarm')
 	def initdmesg(self):
 		# get the latest time stamp from the dmesg log
 		fp = os.popen('dmesg')
@@ -284,36 +280,33 @@ class SystemValues:
 			idx = line.find('[')
 			if idx > 1:
 				line = line[idx:]
-			m = re.match('[ \t]*(\[ *)(?P<ktime>[0-9\.]*)(\]) (?P<msg>.*)', line)
-			if(m):
-				ktime = m.group('ktime')
+			if m := re.match('[ \t]*(\[ *)(?P<ktime>[0-9\.]*)(\]) (?P<msg>.*)', line):
+				ktime = m['ktime']
 		fp.close()
 		self.dmesgstart = float(ktime)
 	def getdmesg(self):
 		# store all new dmesg lines since initdmesg was called
 		fp = os.popen('dmesg')
-		op = open(self.dmesgfile, 'a')
-		for line in fp:
-			line = line.replace('\r\n', '')
-			idx = line.find('[')
-			if idx > 1:
-				line = line[idx:]
-			m = re.match('[ \t]*(\[ *)(?P<ktime>[0-9\.]*)(\]) (?P<msg>.*)', line)
-			if(not m):
-				continue
-			ktime = float(m.group('ktime'))
-			if ktime > self.dmesgstart:
-				op.write(line)
-		fp.close()
-		op.close()
+		with open(self.dmesgfile, 'a') as op:
+			for line in fp:
+				line = line.replace('\r\n', '')
+				idx = line.find('[')
+				if idx > 1:
+					line = line[idx:]
+				m = re.match('[ \t]*(\[ *)(?P<ktime>[0-9\.]*)(\]) (?P<msg>.*)', line)
+				if(not m):
+					continue
+				ktime = float(m['ktime'])
+				if ktime > self.dmesgstart:
+					op.write(line)
+			fp.close()
 	def addFtraceFilterFunctions(self, file):
-		fp = open(file)
-		list = fp.read().split('\n')
-		fp.close()
+		with open(file) as fp:
+			list = fp.read().split('\n')
 		for i in list:
 			if len(i) < 2:
 				continue
-			self.tracefuncs[i] = dict()
+			self.tracefuncs[i] = {}
 	def getFtraceFilterFunctions(self, current):
 		rootCheck(True)
 		if not current:
@@ -337,38 +330,37 @@ class SystemValues:
 				else:
 					print self.colorText(i)
 	def setFtraceFilterFunctions(self, list):
-		fp = open(self.tpath+'available_filter_functions')
-		master = fp.read().split('\n')
-		fp.close()
-		flist = ''
-		for i in list:
-			if i not in master:
-				continue
-			if ' [' in i:
-				flist += i.split(' ')[0]+'\n'
-			else:
-				flist += i+'\n'
-		fp = open(self.tpath+'set_graph_function', 'w')
-		fp.write(flist)
-		fp.close()
+		with open(f'{self.tpath}available_filter_functions') as fp:
+			master = fp.read().split('\n')
+		flist = ''.join(
+			i.split(' ')[0] + '\n' if ' [' in i else i + '\n'
+			for i in list
+			if i in master
+		)
+		with open(f'{self.tpath}set_graph_function', 'w') as fp:
+			fp.write(flist)
 	def kprobeMatch(self, name, target):
 		if name not in self.kprobes:
 			return False
-		if re.match(self.kprobes[name]['mask'], target):
-			return True
-		return False
+		return bool(re.match(self.kprobes[name]['mask'], target))
 	def basicKprobe(self, name):
-		self.kprobes[name] = {'name': name,'func': name,'args': dict(),'format': name,'mask': name}
+		self.kprobes[name] = {
+			'name': name,
+			'func': name,
+			'args': {},
+			'format': name,
+			'mask': name,
+		}
 	def defaultKprobe(self, name, kdata):
 		k = kdata
 		for field in ['name', 'format', 'mask', 'func']:
 			if field not in k:
 				k[field] = name
-		archargs = 'args_'+platform.machine()
+		archargs = f'args_{platform.machine()}'
 		if archargs in k:
 			k['args'] = k[archargs]
 		else:
-			k['args'] = dict()
+			k['args'] = {}
 			k['format'] = name
 		self.kprobes[name] = k
 	def kprobeColor(self, name):
@@ -389,42 +381,42 @@ class SystemValues:
 			elif c != '"':
 				data += c
 		fmt, args = self.kprobes[name]['format'], self.kprobes[name]['args']
-		arglist = dict()
+		arglist = {}
 		# now process the args
 		for arg in sorted(args):
 			arglist[arg] = ''
-			m = re.match('.* '+arg+'=(?P<arg>.*) ', data);
-			if m:
-				arglist[arg] = m.group('arg')
-			else:
-				m = re.match('.* '+arg+'=(?P<arg>.*)', data);
-				if m:
-					arglist[arg] = m.group('arg')
+			if m := re.match(f'.* {arg}=(?P<arg>.*) ', data):
+				arglist[arg] = m['arg']
+			elif m := re.match(f'.* {arg}=(?P<arg>.*)', data):
+				arglist[arg] = m['arg']
 		out = fmt.format(**arglist)
 		out = out.replace(' ', '_').replace('"', '')
 		return out
 	def kprobeText(self, kprobe):
 		name, fmt, func, args = kprobe['name'], kprobe['format'], kprobe['func'], kprobe['args']
 		if re.findall('{(?P<n>[a-z,A-Z,0-9]*)}', func):
-			doError('Kprobe "%s" has format info in the function name "%s"' % (name, func), False)
+			doError(
+				f'Kprobe "{name}" has format info in the function name "{func}"', False
+			)
 		for arg in re.findall('{(?P<n>[a-z,A-Z,0-9]*)}', fmt):
 			if arg not in args:
-				doError('Kprobe "%s" is missing argument "%s"' % (name, arg), False)
-		val = 'p:%s_cal %s' % (name, func)
+				doError(f'Kprobe "{name}" is missing argument "{arg}"', False)
+		val = f'p:{name}_cal {func}'
 		for i in sorted(args):
-			val += ' %s=%s' % (i, args[i])
+			val += f' {i}={args[i]}'
 		val += '\nr:%s_ret %s $retval\n' % (name, func)
 		return val
 	def addKprobes(self):
 		# first test each kprobe
 		print('INITIALIZING KPROBES...')
-		rejects = []
-		for name in sorted(self.kprobes):
-			if not self.testKprobe(self.kprobes[name]):
-				rejects.append(name)
+		rejects = [
+			name
+			for name in sorted(self.kprobes)
+			if not self.testKprobe(self.kprobes[name])
+		]
 		# remove all failed ones from the list
 		for name in rejects:
-			vprint('Skipping KPROBE: %s' % name)
+			vprint(f'Skipping KPROBE: {name}')
 			self.kprobes.pop(name)
 		self.fsetVal('', 'kprobe_events')
 		kprobeevents = ''
@@ -455,17 +447,14 @@ class SystemValues:
 			return False
 		linesout = len(kprobeevents.split('\n'))
 		linesack = len(check.split('\n'))
-		if linesack < linesout:
-			return False
-		return True
+		return linesack >= linesout
 	def fsetVal(self, val, path, mode='w'):
 		file = self.tpath+path
 		if not os.path.exists(file):
 			return False
 		try:
-			fp = open(file, mode)
-			fp.write(val)
-			fp.close()
+			with open(file, mode) as fp:
+				fp.write(val)
 		except:
 			pass
 		return True
@@ -475,9 +464,8 @@ class SystemValues:
 		if not os.path.exists(file):
 			return res
 		try:
-			fp = open(file, 'r')
-			res = fp.read()
-			fp.close()
+			with open(file, 'r') as fp:
+				res = fp.read()
 		except:
 			pass
 		return res
@@ -501,9 +489,7 @@ class SystemValues:
 				funclist.append(self.tracefuncs[i]['func'])
 			else:
 				funclist.append(i)
-		if name in funclist:
-			return True
-		return False
+		return name in funclist
 	def initFtrace(self, testing=False):
 		tp = self.tpath
 		print('INITIALIZING FTRACE...')
@@ -559,11 +545,11 @@ class SystemValues:
 					else:
 						cf.append(fn)
 				self.setFtraceFilterFunctions(cf)
-		if(self.usetraceevents):
+		if self.usetraceevents:
 			# turn trace events on
 			events = iter(self.traceevents)
 			for e in events:
-				self.fsetVal('1', 'events/power/'+e+'/enable')
+				self.fsetVal('1', f'events/power/{e}/enable')
 		# clear the trace buffer
 		self.fsetVal('', 'trace')
 	def verifyFtrace(self):
@@ -578,22 +564,14 @@ class SystemValues:
 				'set_ftrace_filter',
 				'set_graph_function'
 			]
-		for f in files:
-			if(os.path.exists(tp+f) == False):
-				return False
-		return True
+		return all(os.path.exists(tp+f) != False for f in files)
 	def verifyKprobes(self):
 		# files needed for kprobes to work
 		files = ['kprobe_events', 'events']
 		tp = self.tpath
-		for f in files:
-			if(os.path.exists(tp+f) == False):
-				return False
-		return True
+		return all(os.path.exists(tp+f) != False for f in files)
 	def colorText(self, str):
-		if not self.ansi:
-			return str
-		return '\x1B[31;40m'+str+'\x1B[m'
+		return '\x1B[31;40m'+str+'\x1B[m' if self.ansi else str
 
 sysvals = SystemValues()
 
@@ -614,19 +592,15 @@ class DevProps:
 	def altName(self, dev):
 		if not self.altname or self.altname == dev:
 			return dev
-		return '%s [%s]' % (self.altname, dev)
+		return f'{self.altname} [{dev}]'
 	def xtraClass(self):
 		if self.xtraclass:
-			return ' '+self.xtraclass
-		if not self.async:
-			return ' sync'
-		return ''
+			return f' {self.xtraclass}'
+		return '' if self.async else ' sync'
 	def xtraInfo(self):
 		if self.xtraclass:
-			return ' '+self.xtraclass
-		if self.async:
-			return ' async'
-		return ' sync'
+			return f' {self.xtraclass}'
+		return ' async' if self.async else ' sync'
 
 # Class: DeviceNode
 # Description:
@@ -688,32 +662,91 @@ class Data:
 		self.idstr = idchar[num]
 		self.dmesgtext = []
 		self.phases = []
-		self.dmesg = { # fixed list of 10 phases
-			'suspend_prepare': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#CCFFCC', 'order': 0},
-			        'suspend': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#88FF88', 'order': 1},
-			   'suspend_late': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#00AA00', 'order': 2},
-			  'suspend_noirq': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#008888', 'order': 3},
-		    'suspend_machine': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#0000FF', 'order': 4},
-			 'resume_machine': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#FF0000', 'order': 5},
-			   'resume_noirq': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#FF9900', 'order': 6},
-			   'resume_early': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#FFCC00', 'order': 7},
-			         'resume': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#FFFF88', 'order': 8},
-			'resume_complete': {'list': dict(), 'start': -1.0, 'end': -1.0,
-								'row': 0, 'color': '#FFFFCC', 'order': 9}
+		self.dmesg = {
+			'suspend_prepare': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#CCFFCC',
+				'order': 0,
+			},
+			'suspend': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#88FF88',
+				'order': 1,
+			},
+			'suspend_late': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#00AA00',
+				'order': 2,
+			},
+			'suspend_noirq': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#008888',
+				'order': 3,
+			},
+			'suspend_machine': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#0000FF',
+				'order': 4,
+			},
+			'resume_machine': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#FF0000',
+				'order': 5,
+			},
+			'resume_noirq': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#FF9900',
+				'order': 6,
+			},
+			'resume_early': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#FFCC00',
+				'order': 7,
+			},
+			'resume': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#FFFF88',
+				'order': 8,
+			},
+			'resume_complete': {
+				'list': {},
+				'start': -1.0,
+				'end': -1.0,
+				'row': 0,
+				'color': '#FFFFCC',
+				'order': 9,
+			},
 		}
 		self.phases = self.sortedPhases()
 		self.devicegroups = []
-		for phase in self.phases:
-			self.devicegroups.append([phase])
+		self.devicegroups.extend([phase] for phase in self.phases)
 	def getStart(self):
 		return self.dmesg[self.phases[0]]['start']
 	def setStart(self, time):
@@ -766,40 +799,28 @@ class Data:
 		# detail block fits within tgtdev
 		if('src' not in tgtdev):
 			tgtdev['src'] = []
-		title = cdata+' '+rdata
+		title = f'{cdata} {rdata}'
 		mstr = '\(.*\) *(?P<args>.*) *\((?P<caller>.*)\+.* arg1=(?P<ret>.*)'
-		m = re.match(mstr, title)
-		if m:
-			c = m.group('caller')
-			a = m.group('args').strip()
-			r = m.group('ret')
-			if len(r) > 6:
-				r = ''
-			else:
-				r = 'ret=%s ' % r
+		if m := re.match(mstr, title):
+			c = m['caller']
+			a = m['args'].strip()
+			r = m['ret']
+			r = '' if len(r) > 6 else f'ret={r} '
 			l = '%0.3fms' % ((end - start) * 1000)
 			if kprobename in self.dev_ubiquitous:
-				title = '%s(%s) <- %s, %s(%s)' % (displayname, a, c, r, l)
+				title = f'{displayname}({a}) <- {c}, {r}({l})'
 			else:
-				title = '%s(%s) %s(%s)' % (displayname, a, r, l)
+				title = f'{displayname}({a}) {r}({l})'
 		e = TraceEvent(title, kprobename, start, end - start)
 		tgtdev['src'].append(e)
 		return True
 	def trimTimeVal(self, t, t0, dT, left):
-		if left:
-			if(t > t0):
-				if(t - dT < t0):
-					return t0
-				return t - dT
-			else:
-				return t
+		if left and (t > t0):
+			return max(t - dT, t0)
+		elif left or t >= t0 + dT:
+			return t
 		else:
-			if(t < t0 + dT):
-				if(t > t0):
-					return t0 + dT
-				return t + dT
-			else:
-				return t
+			return t0 + dT if (t > t0) else t + dT
 	def trimTime(self, t0, dT, left):
 		self.tSuspended = self.trimTimeVal(self.tSuspended, t0, dT, left)
 		self.tResumed = self.trimTimeVal(self.tResumed, t0, dT, left)
@@ -837,12 +858,20 @@ class Data:
 			self.dmesg[phase]['order'] += 1
 		self.html_device_id += 1
 		devid = '%s%d' % (self.idstr, self.html_device_id)
-		list = dict()
-		list[devname] = \
-			{'start': start, 'end': end, 'pid': 0, 'par': '',
-			'length': (end-start), 'row': 0, 'id': devid, 'drv': '' };
+		list = {
+			devname: {
+				'start': start,
+				'end': end,
+				'pid': 0,
+				'par': '',
+				'length': end - start,
+				'row': 0,
+				'id': devid,
+				'drv': '',
+			}
+		}
 		self.dmesg[phasename] = \
-			{'list': list, 'start': start, 'end': end,
+				{'list': list, 'start': start, 'end': end,
 			'row': 0, 'color': color, 'order': 0}
 		self.phases = self.sortedPhases()
 	def newPhase(self, phasename, start, end, color, order):
@@ -856,9 +885,9 @@ class Data:
 		if(order < len(self.phases)):
 			p = self.phases[order]
 			self.dmesg[p]['start'] = end
-		list = dict()
+		list = {}
 		self.dmesg[phasename] = \
-			{'list': list, 'start': start, 'end': end,
+				{'list': list, 'start': start, 'end': end,
 			'row': 0, 'color': color, 'order': order}
 		self.phases = self.sortedPhases()
 		self.devicegroups.append([phasename])
@@ -873,25 +902,22 @@ class Data:
 		return sorted(self.dmesg, key=self.dmesgSortVal)
 	def sortedDevices(self, phase):
 		list = self.dmesg[phase]['list']
-		slist = []
-		tmp = dict()
+		tmp = {}
 		for devname in list:
 			dev = list[devname]
 			tmp[dev['start']] = devname
-		for t in sorted(tmp):
-			slist.append(tmp[t])
-		return slist
+		return [tmp[t] for t in sorted(tmp)]
 	def fixupInitcalls(self, phase, end):
 		# if any calls never returned, clip them at system resume end
 		phaselist = self.dmesg[phase]['list']
 		for devname in phaselist:
 			dev = phaselist[devname]
-			if(dev['end'] < 0):
+			if (dev['end'] < 0):
 				for p in self.phases:
 					if self.dmesg[p]['end'] > dev['start']:
 						dev['end'] = self.dmesg[p]['end']
 						break
-				vprint('%s (%s): callback didnt return' % (devname, phase))
+				vprint(f'{devname} ({phase}): callback didnt return')
 	def deviceFilter(self, devicefilter):
 		# remove all by the relatives of the filter devnames
 		filter = []
@@ -921,9 +947,7 @@ class Data:
 		for phase in self.phases:
 			self.fixupInitcalls(phase, self.getEnd())
 	def isInsideTimeline(self, start, end):
-		if(self.start <= start and self.end > start):
-			return True
-		return False
+		return self.start <= start and self.end > start
 	def phaseOverlap(self, phases):
 		rmgroups = []
 		newgroup = []
@@ -976,9 +1000,7 @@ class Data:
 		self.html_device_id += 1
 		devid = '%s%d' % (self.idstr, self.html_device_id)
 		list = self.dmesg[phase]['list']
-		length = -1.0
-		if(start >= 0 and end >= 0):
-			length = end - start
+		length = end - start if (start >= 0 and end >= 0) else -1.0
 		if pid == -2:
 			i = 2
 			origname = name
@@ -993,32 +1015,20 @@ class Data:
 			list[name]['color'] = color
 		return name
 	def deviceIDs(self, devlist, phase):
-		idlist = []
 		list = self.dmesg[phase]['list']
-		for devname in list:
-			if devname in devlist:
-				idlist.append(list[devname]['id'])
-		return idlist
+		return [list[devname]['id'] for devname in list if devname in devlist]
 	def deviceParentID(self, devname, phase):
-		pdev = ''
 		pdevid = ''
 		list = self.dmesg[phase]['list']
-		if devname in list:
-			pdev = list[devname]['par']
-		if pdev in list:
-			return list[pdev]['id']
-		return pdev
+		pdev = list[devname]['par'] if devname in list else ''
+		return list[pdev]['id'] if pdev in list else pdev
 	def deviceChildren(self, devname, phase):
-		devlist = []
 		list = self.dmesg[phase]['list']
-		for child in list:
-			if(list[child]['par'] == devname):
-				devlist.append(child)
-		return devlist
+		return [child for child in list if (list[child]['par'] == devname)]
 	def deviceDescendants(self, devname, phase):
 		children = self.deviceChildren(devname, phase)
 		family = children
-		for child in children:
+		for child in family:
 			family += self.deviceDescendants(child, phase)
 		return family
 	def deviceChildrenIDs(self, devname, phase):
@@ -1062,9 +1072,9 @@ class Data:
 					if list[node.name]['drv']:
 						drv = ' {'+list[node.name]['drv']+'}'
 					info += ('<li>%s: %.3fms</li>' % (phase, (e-s)*1000))
-			html += '<li><b>'+node.name+drv+'</b>'
+			html += f'<li><b>{node.name}{drv}</b>'
 			if info:
-				html += '<ul>'+info+'</ul>'
+				html += f'<ul>{info}</ul>'
 			html += '</li>'
 		if len(node.children) > 0:
 			html += '<ul>'
@@ -1098,7 +1108,7 @@ class Data:
 		return self.printTopology(master)
 	def selectTimelineDevices(self, widfmt, tTotal, mindevlen):
 		# only select devices that will actually show up in html
-		self.tdevlist = dict()
+		self.tdevlist = {}
 		for phase in self.dmesg:
 			devlist = []
 			list = self.dmesg[phase]['list']

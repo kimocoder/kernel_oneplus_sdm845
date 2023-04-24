@@ -68,26 +68,22 @@ def trace_begin():
 # do more analysis with simple database commands.
 #
 def process_event(param_dict):
-        event_attr = param_dict["attr"]
-        sample     = param_dict["sample"]
-        raw_buf    = param_dict["raw_buf"]
-        comm       = param_dict["comm"]
-        name       = param_dict["ev_name"]
+	event_attr = param_dict["attr"]
+	sample     = param_dict["sample"]
+	raw_buf    = param_dict["raw_buf"]
+	comm       = param_dict["comm"]
+	name       = param_dict["ev_name"]
 
-        # Symbol and dso info are not always resolved
-        if (param_dict.has_key("dso")):
-                dso = param_dict["dso"]
-        else:
-                dso = "Unknown_dso"
+	        # Symbol and dso info are not always resolved
+	dso = param_dict["dso"] if (param_dict.has_key("dso")) else "Unknown_dso"
+	if (param_dict.has_key("symbol")):
+	        symbol = param_dict["symbol"]
+	else:
+	        symbol = "Unknown_symbol"
 
-        if (param_dict.has_key("symbol")):
-                symbol = param_dict["symbol"]
-        else:
-                symbol = "Unknown_symbol"
-
-        # Create the event object and insert it to the right table in database
-        event = create_event(name, comm, dso, symbol, raw_buf)
-        insert_db(event)
+	# Create the event object and insert it to the right table in database
+	event = create_event(name, comm, dso, symbol, raw_buf)
+	insert_db(event)
 
 def insert_db(event):
         if event.ev_type == EVTYPE_GENERIC:
@@ -113,9 +109,7 @@ def trace_end():
 #
 
 def num2sym(num):
-        # Each number will have at least one '#'
-        snum = '#' * (int)(math.log(num, 2) + 1)
-        return snum
+	return '#' * (int)(math.log(num, 2) + 1)
 
 def show_general_events():
 

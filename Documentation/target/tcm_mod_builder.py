@@ -587,21 +587,24 @@ def tcm_mod_build_kconfig(fabric_mod_dir_var, fabric_mod_name):
 	return
 
 def tcm_mod_add_kbuild(tcm_dir, fabric_mod_name):
-	buf = "obj-$(CONFIG_" + fabric_mod_name.upper() + ")	+= " + fabric_mod_name.lower() + "/\n"
-	kbuild = tcm_dir + "/drivers/target/Makefile"
+	buf = (
+		f"obj-$(CONFIG_{fabric_mod_name.upper()}"
+		+ ")	+= "
+		+ fabric_mod_name.lower()
+		+ "/\n"
+	)
+	kbuild = f"{tcm_dir}/drivers/target/Makefile"
 
-	f = open(kbuild, 'a')
-	f.write(buf)
-	f.close()
+	with open(kbuild, 'a') as f:
+		f.write(buf)
 	return
 
 def tcm_mod_add_kconfig(tcm_dir, fabric_mod_name):
 	buf = "source \"drivers/target/" + fabric_mod_name.lower() + "/Kconfig\"\n"
-	kconfig = tcm_dir + "/drivers/target/Kconfig"
+	kconfig = f"{tcm_dir}/drivers/target/Kconfig"
 
-	f = open(kconfig, 'a')
-	f.write(buf)
-	f.close()
+	with open(kconfig, 'a') as f:
+		f.write(buf)
 	return
 
 def main(modname, proto_ident):

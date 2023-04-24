@@ -43,9 +43,8 @@ vmbus_dev_dict = {
 
 def get_vmbus_dev_attr(dev_name, attr):
 	try:
-		f = open('%s/%s/%s' % (vmbus_sys_path, dev_name, attr), 'r')
-		lines = f.readlines()
-		f.close()
+		with open(f'{vmbus_sys_path}/{dev_name}/{attr}', 'r') as f:
+			lines = f.readlines()
 	except IOError:
 		lines = []
 
@@ -72,7 +71,7 @@ for f in os.listdir(vmbus_sys_path):
 				(c.split(':')[0], c.split(':')[1])
 					for c in chn_vp_mapping]
 	d = VMBus_Dev()
-	d.sysfs_path = '%s/%s' % (vmbus_sys_path, f)
+	d.sysfs_path = f'{vmbus_sys_path}/{f}'
 	d.vmbus_id = vmbus_id
 	d.class_id = class_id
 	d.device_id = device_id
@@ -92,11 +91,21 @@ format2 = '%2s: Class_ID = %s - %s\n\tDevice_ID = %s\n\tSysfs path: %s\n%s'
 
 for d in vmbus_dev_list:
 	if verbose == 0:
-		print ('VMBUS ID ' + format0) % (d.vmbus_id, d.dev_desc)
+		print(f'VMBUS ID {format0}') % (d.vmbus_id, d.dev_desc)
 	elif verbose == 1:
-		print ('VMBUS ID ' + format1) %	\
-			(d.vmbus_id, d.class_id, d.dev_desc, d.chn_vp_mapping)
+		(
+			print(f'VMBUS ID {format1}')
+			% (d.vmbus_id, d.class_id, d.dev_desc, d.chn_vp_mapping)
+		)
 	else:
-		print ('VMBUS ID ' + format2) % \
-			(d.vmbus_id, d.class_id, d.dev_desc, \
-			d.device_id, d.sysfs_path, d.chn_vp_mapping)
+		(
+			print(f'VMBUS ID {format2}')
+			% (
+				d.vmbus_id,
+				d.class_id,
+				d.dev_desc,
+				d.device_id,
+				d.sysfs_path,
+				d.chn_vp_mapping,
+			)
+		)

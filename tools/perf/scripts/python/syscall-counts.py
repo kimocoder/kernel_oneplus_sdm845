@@ -17,14 +17,10 @@ from Util import syscall_name
 
 usage = "perf script -s syscall-counts.py [comm]\n";
 
-for_comm = None
-
 if len(sys.argv) > 2:
 	sys.exit(usage)
 
-if len(sys.argv) > 1:
-	for_comm = sys.argv[1]
-
+for_comm = sys.argv[1] if len(sys.argv) > 1 else None
 syscalls = autodict()
 
 def trace_begin():
@@ -36,9 +32,8 @@ def trace_end():
 def raw_syscalls__sys_enter(event_name, context, common_cpu,
 	common_secs, common_nsecs, common_pid, common_comm,
 	common_callchain, id, args):
-	if for_comm is not None:
-		if common_comm != for_comm:
-			return
+	if for_comm is not None and common_comm != for_comm:
+		return
 	try:
 		syscalls[id] += 1
 	except TypeError:

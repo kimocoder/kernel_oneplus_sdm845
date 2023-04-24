@@ -22,8 +22,7 @@ def list_for_each(head):
     if head.type == list_head.get_type().pointer():
         head = head.dereference()
     elif head.type != list_head.get_type():
-        raise gdb.GdbError("Must be struct list_head not {}"
-                           .format(head.type))
+        raise gdb.GdbError(f"Must be struct list_head not {head.type}")
 
     node = head['next'].dereference()
     while node.address != head.address:
@@ -34,8 +33,7 @@ def list_for_each(head):
 def list_for_each_entry(head, gdbtype, member):
     for node in list_for_each(head):
         if node.type != list_head.get_type().pointer():
-            raise TypeError("Type {} found. Expected struct list_head *."
-                            .format(node.type))
+            raise TypeError(f"Type {node.type} found. Expected struct list_head *.")
         yield utils.container_of(node, gdbtype, member)
 
 
@@ -47,7 +45,7 @@ def list_check(head):
         raise gdb.GdbError('argument must be of type (struct list_head [*])')
     c = head
     try:
-        gdb.write("Starting with: {}\n".format(c))
+        gdb.write(f"Starting with: {c}\n")
     except gdb.MemoryError:
         gdb.write('head is not accessible\n')
         return
@@ -93,7 +91,7 @@ def list_check(head):
         c = n
         nb += 1
         if c == head:
-            gdb.write("list is consistent: {} node(s)\n".format(nb))
+            gdb.write(f"list is consistent: {nb} node(s)\n")
             return
 
 

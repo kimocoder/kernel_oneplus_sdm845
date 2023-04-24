@@ -29,8 +29,7 @@ def nsecs_nsecs(nsecs):
     return nsecs % NSECS_PER_SEC
 
 def nsecs_str(nsecs):
-    str = "%5u.%09u" % (nsecs_secs(nsecs), nsecs_nsecs(nsecs)),
-    return str
+    return "%5u.%09u" % (nsecs_secs(nsecs), nsecs_nsecs(nsecs)),
 
 def add_stats(dict, key, value):
 	if not dict.has_key(key):

@@ -35,10 +35,7 @@ class CallTree:
 	def __init__(self, func, time = None, parent = None):
 		self._func = func
 		self._time = time
-		if parent is None:
-			self._parent = CallTree.ROOT
-		else:
-			self._parent = parent
+		self._parent = CallTree.ROOT if parent is None else parent
 		self._children = []
 
 	def calls(self, func, calltime):
@@ -59,30 +56,25 @@ class CallTree:
 		tree = self
 		while tree != CallTree.ROOT and tree._func != func:
 			tree = tree._parent
-		if tree == CallTree.ROOT:
-			child = CallTree.ROOT.calls(func, None)
-			return child
-		return tree
+		return CallTree.ROOT.calls(func, None) if tree == CallTree.ROOT else tree
 
 	def __repr__(self):
 		return self.__toString("", True)
 
 	def __toString(self, branch, lastChild):
-		if self._time is not None:
-			s = "%s----%s (%s)\n" % (branch, self._func, self._time)
-		else:
-			s = "%s----%s\n" % (branch, self._func)
-
 		i = 0
+		s = (
+			"%s----%s (%s)\n" % (branch, self._func, self._time)
+			if self._time is not None
+			else "%s----%s\n" % (branch, self._func)
+		)
 		if lastChild:
-			branch = branch[:-1] + " "
+			branch = f"{branch[:-1]} "
 		while i < len(self._children):
 			if i != len(self._children) - 1:
-				s += "%s" % self._children[i].__toString(branch +\
-								"    |", False)
+				s += f'{self._children[i].__toString(f"{branch}    |", False)}'
 			else:
-				s += "%s" % self._children[i].__toString(branch +\
-								"    |", True)
+				s += f'{self._children[i].__toString(f"{branch}    |", True)}'
 			i += 1
 		return s
 
@@ -106,7 +98,7 @@ def parseLine(line):
 	m = re.match("[^]]+?\\] +([0-9.]+): (\\w+) <-(\\w+)", line)
 	if m is None:
 		raise BrokenLineException
-	return (m.group(1), m.group(2), m.group(3))
+	return m[1], m[2], m[3]
 
 
 def main():

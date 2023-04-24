@@ -76,17 +76,17 @@ try:
     makefile_patchlevel = None
     for line in open('../Makefile'):
         key, val = [x.strip() for x in line.split('=', 2)]
-        if key == 'VERSION':
-            makefile_version = val
-        elif key == 'PATCHLEVEL':
+        if key == 'PATCHLEVEL':
             makefile_patchlevel = val
+        elif key == 'VERSION':
+            makefile_version = val
         if makefile_version and makefile_patchlevel:
             break
 except:
     pass
 finally:
     if makefile_version and makefile_patchlevel:
-        version = release = makefile_version + '.' + makefile_patchlevel
+        version = release = f'{makefile_version}.{makefile_patchlevel}'
     else:
         sys.stderr.write('Warning: Could not extract kernel version\n')
         version = release = "unknown version"

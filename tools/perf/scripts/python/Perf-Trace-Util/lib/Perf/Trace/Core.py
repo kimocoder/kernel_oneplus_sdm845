@@ -92,17 +92,14 @@ def trace_flag_str(value):
 
 
 def taskState(state):
-	states = {
-		0 : "R",
-		1 : "S",
-		2 : "D",
-		64: "DEAD"
-	}
+    states = {
+    	0 : "R",
+    	1 : "S",
+    	2 : "D",
+    	64: "DEAD"
+    }
 
-	if state not in states:
-		return "Unknown"
-
-	return states[state]
+    return "Unknown" if state not in states else states[state]
 
 
 class EventHeaders:

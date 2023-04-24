@@ -48,7 +48,7 @@ class RunqueueEventSleep:
 		self.sleeper = sleeper
 
 	def __repr__(self):
-		return "%s gone to sleep" % thread_name(self.sleeper)
+		return f"{thread_name(self.sleeper)} gone to sleep"
 
 class RunqueueEventWakeup:
 	@staticmethod
@@ -59,7 +59,7 @@ class RunqueueEventWakeup:
 		self.wakee = wakee
 
 	def __repr__(self):
-		return "%s woke up" % thread_name(self.wakee)
+		return f"{thread_name(self.wakee)} woke up"
 
 class RunqueueEventFork:
 	@staticmethod
@@ -70,7 +70,7 @@ class RunqueueEventFork:
 		self.child = child
 
 	def __repr__(self):
-		return "new forked task %s" % thread_name(self.child)
+		return f"new forked task {thread_name(self.child)}"
 
 class RunqueueMigrateIn:
 	@staticmethod
@@ -81,7 +81,7 @@ class RunqueueMigrateIn:
 		self.new = new
 
 	def __repr__(self):
-		return "task migrated in %s" % thread_name(self.new)
+		return f"task migrated in {thread_name(self.new)}"
 
 class RunqueueMigrateOut:
 	@staticmethod
@@ -92,7 +92,7 @@ class RunqueueMigrateOut:
 		self.old = old
 
 	def __repr__(self):
-		return "task migrated out %s" % thread_name(self.old)
+		return f"task migrated out {thread_name(self.old)}"
 
 class RunqueueSnapshot:
 	def __init__(self, tasks = [0], event = RunqueueEventUnknown()):
@@ -132,7 +132,7 @@ class RunqueueSnapshot:
 		if new in self.tasks:
 			self.event = event
 			return self
-		next_tasks = self.tasks[:] + tuple([new])
+		next_tasks = self.tasks[:] + (new, )
 
 		return RunqueueSnapshot(next_tasks, event)
 
@@ -207,11 +207,7 @@ class TimeSlice:
 
 	def wake_up(self, ts_list, pid, cpu, fork):
 		old_rq = self.prev.rqs[cpu]
-		if fork:
-			new_rq = old_rq.wake_up_new(pid)
-		else:
-			new_rq = old_rq.wake_up(pid)
-
+		new_rq = old_rq.wake_up_new(pid) if fork else old_rq.wake_up(pid)
 		if new_rq is old_rq:
 			return
 		self.rqs[cpu] = new_rq
@@ -228,11 +224,11 @@ class TimeSliceList(UserList):
 		self.data = arg
 
 	def get_time_slice(self, ts):
-		if len(self.data) == 0:
-			slice = TimeSlice(ts, TimeSlice(-1, None))
-		else:
-			slice = self.data[-1].next(ts)
-		return slice
+		return (
+			TimeSlice(ts, TimeSlice(-1, None))
+			if len(self.data) == 0
+			else self.data[-1].next(ts)
+		)
 
 	def find_time_slice(self, ts):
 		start = 0
@@ -240,7 +236,7 @@ class TimeSliceList(UserList):
 		found = -1
 		searching = True
 		while searching:
-			if start == end or start == end - 1:
+			if start in [end, end - 1]:
 				searching = False
 
 			i = (end + start) / 2
@@ -252,7 +248,7 @@ class TimeSliceList(UserList):
 			if self.data[i].end < ts:
 				start = i
 
-			elif self.data[i].start > ts:
+			else:
 				end = i
 
 		return found
@@ -280,19 +276,11 @@ class TimeSliceList(UserList):
 	def update_rectangle_cpu(self, slice, cpu):
 		rq = slice.rqs[cpu]
 
-		if slice.total_load != 0:
-			load_rate = rq.load() / float(slice.total_load)
-		else:
-			load_rate = 0
-
+		load_rate = rq.load() / float(slice.total_load) if slice.total_load != 0 else 0
 		red_power = int(0xff - (0xff * load_rate))
 		color = (0xff, red_power, red_power)
 
-		top_color = None
-
-		if cpu in slice.event_cpus:
-			top_color = rq.event.color()
-
+		top_color = rq.event.color() if cpu in slice.event_cpus else None
 		self.root_win.paint_rectangle_zone(cpu, color, top_color, slice.start, slice.end)
 
 	def fill_zone(self, start, end):
