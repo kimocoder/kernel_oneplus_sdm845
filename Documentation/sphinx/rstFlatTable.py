@@ -125,9 +125,10 @@ class FlatTable(Table):
 
         if not self.content:
             error = self.state_machine.reporter.error(
-                'The "%s" directive is empty; content required.' % self.name,
+                f'The "{self.name}" directive is empty; content required.',
                 nodes.literal_block(self.block_text, self.block_text),
-                line=self.lineno)
+                line=self.lineno,
+            )
             return [error]
 
         title, messages = self.make_title()
@@ -282,26 +283,18 @@ class ListTableBuilder(object):
         # re-calculate the max columns.
 
         for row in self.rows:
-            if self.max_cols < len(row):
-                self.max_cols = len(row)
-
-        # fill with empty cells or cellspan?
-
-        fill_cells = False
-        if 'fill-cells' in self.directive.options:
-            fill_cells = True
-
+            self.max_cols = max(self.max_cols, len(row))
+        fill_cells = 'fill-cells' in self.directive.options
         for row in self.rows:
-            x =  self.max_cols - len(row)
-            if x and not fill_cells:
-                if row[-1] is None:
+            if x := self.max_cols - len(row):
+                if fill_cells:
+                    for _ in range(x):
+                        row.append( (0, 0, nodes.comment()) )
+                elif row[-1] is None:
                     row.append( ( x - 1, 0, []) )
                 else:
                     cspan, rspan, content = row[-1]
                     row[-1] = (cspan + x, rspan, content)
-            elif x and fill_cells:
-                for i in range(x):
-                    row.append( (0, 0, nodes.comment()) )
 
     def pprint(self):
         # for debugging
@@ -315,27 +308,25 @@ class ListTableBuilder(object):
                 else:
                     content = col[2][0].astext()
                     if len (content) > 30:
-                        content = content[:30] + "..."
+                        content = f"{content[:30]}..."
                     retVal += ('(cspan=%s, rspan=%s, %r)'
                                % (col[0], col[1], content))
                     retVal += "]\n    , "
             retVal = retVal[:-2]
             retVal += "]\n  , "
         retVal = retVal[:-2]
-        return retVal + "]"
+        return f"{retVal}]"
 
     def parseRowItem(self, rowItem, rowNum):
-        row = []
         childNo = 0
         error   = False
         cell    = None
         target  = None
 
         for child in rowItem:
-            if (isinstance(child , nodes.comment)
-                or isinstance(child, nodes.system_message)):
-                pass
-            elif isinstance(child , nodes.target):
+            if isinstance(child, (nodes.comment, nodes.system_message)):
+                continue
+            if isinstance(child , nodes.target):
                 target = child
             elif isinstance(child, nodes.bullet_list):
                 childNo += 1
@@ -346,11 +337,10 @@ class ListTableBuilder(object):
 
         if childNo != 1 or error:
             self.raiseError(
-                'Error parsing content block for the "%s" directive: '
-                'two-level bullet list expected, but row %s does not '
-                'contain a second-level bullet list.'
-                % (self.directive.name, rowNum + 1))
+                f'Error parsing content block for the "{self.directive.name}" directive: two-level bullet list expected, but row {rowNum + 1} does not contain a second-level bullet list.'
+            )
 
+        row = []
         for cellItem in cell:
             cspan, rspan, cellElements = self.parseCellItem(cellItem)
             if target is not None:

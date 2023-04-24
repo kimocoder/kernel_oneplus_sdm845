@@ -68,9 +68,7 @@ def check_build():
         try:
             os.makedirs(build_dir)
         except OSError as exc:
-            if exc.errno == errno.EEXIST:
-                pass
-            else:
+            if exc.errno != errno.EEXIST:
                 raise
 
 failed_targets = []
@@ -89,12 +87,13 @@ class BuildSequence(namedtuple('BuildSequence', ['log_name', 'short_name', 'step
 
     def run(self):
         self.status = None
-        messages = ["Building: " + self.short_name]
+        messages = [f"Building: {self.short_name}"]
         def printer(line):
             text = "[%-*s] %s" % (self.width, self.short_name, line)
             messages.append(text)
             self.log.write(text)
             self.log.write('\n')
+
         for step in self.steps:
             st = step.run(printer)
             if st:
@@ -124,7 +123,7 @@ class BuildTracker:
         return longest
 
     def __repr__(self):
-        return "BuildTracker(%s)" % self.sequence
+        return f"BuildTracker({self.sequence})"
 
     def run_child(self, seq):
         seq.set_width(self.longest)
@@ -178,7 +177,7 @@ class MkdirStep:
         self.direc = direc
 
     def run(self, outp):
-        outp("mkdir %s" % self.direc)
+        outp(f"mkdir {self.direc}")
         os.mkdir(self.direc)
 
 class RmtreeStep:
@@ -186,7 +185,7 @@ class RmtreeStep:
         self.direc = direc
 
     def run(self, outp):
-        outp("rmtree %s" % self.direc)
+        outp(f"rmtree {self.direc}")
         shutil.rmtree(self.direc, ignore_errors=True)
 
 class CopyfileStep:
@@ -195,7 +194,7 @@ class CopyfileStep:
         self.dest = dest
 
     def run(self, outp):
-        outp("cp %s %s" % (self.src, self.dest))
+        outp(f"cp {self.src} {self.dest}")
         shutil.copyfile(self.src, self.dest)
 
 class ExecStep:
@@ -204,7 +203,7 @@ class ExecStep:
         self.kwargs = kwargs
 
     def run(self, outp):
-        outp("exec: %s" % (" ".join(self.cmd),))
+        outp(f'exec: {" ".join(self.cmd)}')
         with open('/dev/null', 'r') as devnull:
             proc = subprocess.Popen(self.cmd, stdin=devnull,
                     stdout=subprocess.PIPE,
@@ -218,10 +217,7 @@ class ExecStep:
                 line = line.rstrip('\n')
                 outp(line)
             result = proc.wait()
-            if result != 0:
-                return ('error', result)
-            else:
-                return None
+            return ('error', result) if result != 0 else None
 
 class Builder():
 
@@ -243,50 +239,58 @@ class Builder():
         else:
             self.make_env['ARCH'] = 'arm'
         self.make_env['KCONFIG_NOTIMESTAMP'] = 'true'
-        self.log_name = "%s/log-%s.log" % (build_dir, self.name)
+        self.log_name = f"{build_dir}/log-{self.name}.log"
 
     def build(self):
-        steps = []
         dest_dir = os.path.join(build_dir, self.name)
-        log_name = "%s/log-%s.log" % (build_dir, self.name)
-        steps.append(PrintStep('Building %s in %s log %s' %
-            (self.name, dest_dir, log_name)))
+        log_name = f"{build_dir}/log-{self.name}.log"
+        steps = [PrintStep(f'Building {self.name} in {dest_dir} log {log_name}')]
         if not os.path.isdir(dest_dir):
             steps.append(MkdirStep(dest_dir))
         defconfig = self.defconfig
-        dotconfig = '%s/.config' % dest_dir
-        savedefconfig = '%s/defconfig' % dest_dir
+        dotconfig = f'{dest_dir}/.config'
+        savedefconfig = f'{dest_dir}/defconfig'
 
         staging_dir = 'install_staging'
-        modi_dir = '%s' % staging_dir
-        hdri_dir = '%s/usr' % staging_dir
-        steps.append(RmtreeStep(os.path.join(dest_dir, staging_dir)))
-
-        steps.append(ExecStep(['make', 'O=%s' % dest_dir,
-            self.confname], env=self.make_env))
-
+        modi_dir = f'{staging_dir}'
+        hdri_dir = f'{staging_dir}/usr'
+        steps.extend(
+            (
+                RmtreeStep(os.path.join(dest_dir, staging_dir)),
+                ExecStep(
+                    ['make', f'O={dest_dir}', self.confname], env=self.make_env
+                ),
+            )
+        )
         if not all_options.updateconfigs:
             # Build targets can be dependent upon the completion of
             # previous build targets, so build them one at a time.
-            cmd_line = ['make',
-                'INSTALL_HDR_PATH=%s' % hdri_dir,
-                'INSTALL_MOD_PATH=%s' % modi_dir,
-                'O=%s' % dest_dir]
+            cmd_line = [
+                'make',
+                f'INSTALL_HDR_PATH={hdri_dir}',
+                f'INSTALL_MOD_PATH={modi_dir}',
+                f'O={dest_dir}',
+            ]
             build_targets = []
             for c in make_command:
                 if re.match(r'^-{1,2}\w', c):
                     cmd_line.append(c)
                 else:
                     build_targets.append(c)
-            for t in build_targets:
-                steps.append(ExecStep(cmd_line + [t], env=self.make_env))
-
+            steps.extend(
+                ExecStep(cmd_line + [t], env=self.make_env) for t in build_targets
+            )
         # Copy the defconfig back.
         if all_options.configs or all_options.updateconfigs:
-            steps.append(ExecStep(['make', 'O=%s' % dest_dir,
-                'savedefconfig'], env=self.make_env))
-            steps.append(CopyfileStep(savedefconfig, defconfig))
-
+            steps.extend(
+                (
+                    ExecStep(
+                        ['make', f'O={dest_dir}', 'savedefconfig'],
+                        env=self.make_env,
+                    ),
+                    CopyfileStep(savedefconfig, defconfig),
+                )
+            )
         return steps
 
 def update_config(file, str):
@@ -305,19 +309,19 @@ def scan_configs():
         r'sdm[0-9]*_defconfig',
         r'sdx*_defconfig',
         )
-    arch64_pats = (
-        r'msm*_defconfig',
-        r'sdm[0-9]*_defconfig',
-        r'sdx*_defconfig',
-        )
     for p in arch_pats:
-        for n in glob.glob('arch/arm/configs/' + p):
+        for n in glob.glob(f'arch/arm/configs/{p}'):
             name = os.path.basename(n)[:-10]
             names.append(Builder(name, n))
     if 'CROSS_COMPILE64' in os.environ:
+        arch64_pats = (
+            r'msm*_defconfig',
+            r'sdm[0-9]*_defconfig',
+            r'sdx*_defconfig',
+            )
         for p in arch64_pats:
-            for n in glob.glob('arch/arm64/configs/' + p):
-                name = os.path.basename(n)[:-10] + "-64"
+            for n in glob.glob(f'arch/arm64/configs/{p}'):
+                name = f"{os.path.basename(n)[:-10]}-64"
                 names.append(Builder(name, n))
     return names
 

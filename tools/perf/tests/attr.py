@@ -65,11 +65,11 @@ class Event(dict):
 
     def add(self, data):
         for key, val in data:
-            log.debug("      %s = %s" % (key, val))
+            log.debug(f"      {key} = {val}")
             self[key] = val
 
     def __init__(self, name, data, base):
-        log.debug("    Event %s" % name);
+        log.debug(f"    Event {name}");
         self.name  = name;
         self.group = ''
         self.add(base)
@@ -82,16 +82,13 @@ class Event(dict):
 
         for a_item in a_list:
             for b_item in b_list:
-                if (a_item == b_item):
+                if (a_item == b_item) or a_item == '*' or b_item == '*':
                     return True
-                elif (a_item == '*') or (b_item == '*'):
-                    return True
-
         return False
 
     def equal(self, other):
         for t in Event.terms:
-            log.debug("      [%s] %s %s" % (t, self[t], other[t]));
+            log.debug(f"      [{t}] {self[t]} {other[t]}");
             if not self.has_key(t) or not other.has_key(t):
                 return False
             if not self.compare_data(self[t], other[t]):
@@ -121,7 +118,7 @@ class Test(object):
         parser = ConfigParser.SafeConfigParser()
         parser.read(path)
 
-        log.warning("running '%s'" % path)
+        log.warning(f"running '{path}'")
 
         self.path     = path
         self.test_dir = options.test_dir
@@ -140,10 +137,7 @@ class Test(object):
         self.load_events(path, self.expect)
 
     def is_event(self, name):
-        if name.find("event") == -1:
-            return False
-        else:
-            return True
+        return name.find("event") != -1
 
     def load_events(self, path, events):
         parser_event = ConfigParser.SafeConfigParser()
@@ -161,15 +155,14 @@ class Test(object):
             if (':' in section):
                 base = section[section.index(':') + 1:]
                 parser_base = ConfigParser.SafeConfigParser()
-                parser_base.read(self.test_dir + '/' + base)
+                parser_base.read(f'{self.test_dir}/{base}')
                 base_items = parser_base.items('event')
 
             e = Event(section, parser_items, base_items)
             events[section] = e
 
     def run_cmd(self, tempdir):
-        cmd = "PERF_TEST_ATTR=%s %s %s -o %s/perf.data %s" % (tempdir,
-              self.perf, self.command, tempdir, self.args)
+        cmd = f"PERF_TEST_ATTR={tempdir} {self.perf} {self.command} -o {tempdir}/perf.data {self.args}"
         ret = os.WEXITSTATUS(os.system(cmd))
 
         log.info("  '%s' ret %d " % (cmd, ret))
@@ -231,7 +224,7 @@ class Test(object):
             for iname, ievent in events.items():
                 if (ievent['fd'] == group_fd):
                     event.group = iname
-                    log.debug('[%s] has group leader [%s]' % (name, iname))
+                    log.debug(f'[{name}] has group leader [{iname}]')
                     break;
 
     def run(self):
@@ -243,7 +236,7 @@ class Test(object):
 
             # load events expectation for the test
             log.debug("  loading result events");
-            for f in glob.glob(tempdir + '/event*'):
+            for f in glob.glob(f'{tempdir}/event*'):
                 self.load_events(f, self.result);
 
             # resolve group_fd to event names
@@ -272,7 +265,7 @@ def setup_log(verbose):
 
     if verbose == 1:
         level = logging.WARNING
-    if verbose == 2:
+    elif verbose == 2:
         level = logging.INFO
     if verbose >= 3:
         level = logging.DEBUG

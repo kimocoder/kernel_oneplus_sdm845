@@ -40,14 +40,12 @@ syscalls = autodict()
 
 def trace_begin():
 	thread.start_new_thread(print_syscall_totals, (interval,))
-	pass
 
 def raw_syscalls__sys_enter(event_name, context, common_cpu,
 	common_secs, common_nsecs, common_pid, common_comm,
 	common_callchain, id, args):
-	if for_comm is not None:
-		if common_comm != for_comm:
-			return
+	if for_comm is not None and common_comm != for_comm:
+		return
 	try:
 		syscalls[id] += 1
 	except TypeError:

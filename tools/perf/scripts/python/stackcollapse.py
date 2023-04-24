@@ -87,14 +87,14 @@ def process_event(param_dict):
                 pass
 
         if opts.annotate_kernel and dso == '[kernel.kallsyms]':
-            return sym + '_[k]'
+            return f'{sym}_[k]'
         else:
             return sym
 
-    stack = list()
+    stack = []
     if 'callchain' in param_dict:
         for entry in param_dict['callchain']:
-            entry.setdefault('sym', dict())
+            entry.setdefault('sym', {})
             entry['sym'].setdefault('name', None)
             entry.setdefault('dso', None)
             stack.append(tidy_function_name(entry['sym']['name'],

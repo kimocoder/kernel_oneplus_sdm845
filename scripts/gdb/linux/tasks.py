@@ -40,10 +40,7 @@ def task_lists():
 
 
 def get_task_by_pid(pid):
-    for task in task_lists():
-        if int(task['pid']) == pid:
-            return task
-    return None
+    return next((task for task in task_lists() if int(task['pid']) == pid), None)
 
 
 class LxTaskByPidFunc(gdb.Function):
@@ -56,11 +53,10 @@ return that task_struct variable which PID matches."""
         super(LxTaskByPidFunc, self).__init__("lx_task_by_pid")
 
     def invoke(self, pid):
-        task = get_task_by_pid(pid)
-        if task:
+        if task := get_task_by_pid(pid):
             return task.dereference()
         else:
-            raise gdb.GdbError("No task of PID " + str(pid))
+            raise gdb.GdbError(f"No task of PID {str(pid)}")
 
 
 LxTaskByPidFunc()
@@ -95,9 +91,9 @@ def get_thread_info(task):
             ia64_task_size = gdb.parse_and_eval("sizeof(struct task_struct)")
         thread_info_addr = task.address + ia64_task_size
         thread_info = thread_info_addr.cast(thread_info_ptr_type)
+    elif task.type.fields()[0].type == thread_info_type.get_type():
+        return task['thread_info']
     else:
-        if task.type.fields()[0].type == thread_info_type.get_type():
-            return task['thread_info']
         thread_info = task['stack'].cast(thread_info_ptr_type)
     return thread_info.dereference()
 
@@ -128,10 +124,9 @@ variable."""
         super(LxThreadInfoByPidFunc, self).__init__("lx_thread_info_by_pid")
 
     def invoke(self, pid):
-        task = get_task_by_pid(pid)
-        if task:
+        if task := get_task_by_pid(pid):
             return get_thread_info(task.dereference())
         else:
-            raise gdb.GdbError("No task of PID " + str(pid))
+            raise gdb.GdbError(f"No task of PID {str(pid)}")
 
 LxThreadInfoByPidFunc()

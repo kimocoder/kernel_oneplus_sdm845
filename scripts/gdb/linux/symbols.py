@@ -48,7 +48,7 @@ if hasattr(gdb, 'Breakpoint'):
                 cmd.load_module_symbols(module)
 
             # restore pagination state
-            gdb.execute("set pagination %s" % ("on" if pagination else "off"))
+            gdb.execute(f'set pagination {"on" if pagination else "off"}')
 
             return False
 
@@ -78,16 +78,20 @@ lx-symbols command."""
             for root, dirs, files in os.walk(path):
                 for name in files:
                     if name.endswith(".ko"):
-                        self.module_files.append(root + "/" + name)
+                        self.module_files.append(f"{root}/{name}")
         self.module_files_updated = True
 
     def _get_module_file(self, module_name):
         module_pattern = ".*/{0}\.ko$".format(
             module_name.replace("_", r"[_\-]"))
-        for name in self.module_files:
-            if re.match(module_pattern, name) and os.path.exists(name):
-                return name
-        return None
+        return next(
+            (
+                name
+                for name in self.module_files
+                if re.match(module_pattern, name) and os.path.exists(name)
+            ),
+            None,
+        )
 
     def _section_arguments(self, module):
         try:
@@ -101,8 +105,7 @@ lx-symbols command."""
         args = []
         for section_name in [".data", ".data..read_mostly", ".rodata", ".bss",
                              ".text", ".text.hot", ".text.unlikely"]:
-            address = section_name_to_address.get(section_name)
-            if address:
+            if address := section_name_to_address.get(section_name):
                 args.append(" -s {name} {addr}".format(
                     name=section_name, addr=str(address)))
         return "".join(args)
@@ -135,21 +138,21 @@ lx-symbols command."""
         # Dropping symbols will disable all breakpoints. So save their states
         # and restore them afterward.
         saved_states = []
-        if hasattr(gdb, 'breakpoints') and not gdb.breakpoints() is None:
-            for bp in gdb.breakpoints():
-                saved_states.append({'breakpoint': bp, 'enabled': bp.enabled})
-
+        if hasattr(gdb, 'breakpoints') and gdb.breakpoints() is not None:
+            saved_states.extend(
+                {'breakpoint': bp, 'enabled': bp.enabled}
+                for bp in gdb.breakpoints()
+            )
         # drop all current symbols and reload vmlinux
         gdb.execute("symbol-file", to_string=True)
         gdb.execute("symbol-file vmlinux")
 
         self.loaded_modules = []
-        module_list = modules.module_list()
-        if not module_list:
-            gdb.write("no modules found\n")
-        else:
+        if module_list := modules.module_list():
             [self.load_module_symbols(module) for module in module_list]
 
+        else:
+            gdb.write("no modules found\n")
         for saved_state in saved_states:
             saved_state['breakpoint'].enabled = saved_state['enabled']
 

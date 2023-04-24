@@ -94,11 +94,11 @@ def main():
 	try:
 		lines = open(filein,"r").readlines()
 	except:
-		print ("Problem opening file: %s" % filein)
+		print(f"Problem opening file: {filein}")
 		sys.exit(1)
 
 	if base_str:
-		print ('base= "%s"' % base_str)
+		print(f'base= "{base_str}"')
 		# assume a numeric base.  If that fails, try searching
 		# for a matching line.
 		try:

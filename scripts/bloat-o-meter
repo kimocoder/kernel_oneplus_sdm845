@@ -18,7 +18,7 @@ if len(sys.argv) != 3:
 
 def getsizes(file):
     sym = {}
-    for l in os.popen("nm --size-sort " + file).readlines():
+    for l in os.popen(f"nm --size-sort {file}").readlines():
         size, type, name = l[:-1].split()
         if type in "tTdDbBrR":
             # strip generated symbols
@@ -64,8 +64,9 @@ for name in common:
 delta.sort()
 delta.reverse()
 
-print("add/remove: %s/%s grow/shrink: %s/%s up/down: %s/%s (%s)" % \
-      (add, remove, grow, shrink, up, -down, up-down))
+print(
+    f"add/remove: {add}/{remove} grow/shrink: {grow}/{shrink} up/down: {up}/{-down} ({up - down})"
+)
 print("%-40s %7s %7s %+7s" % ("function", "old", "new", "delta"))
 for d, n in delta:
     if d: print("%-40s %7s %7s %+7d" % (n, old.get(n,"-"), new.get(n,"-"), d))

@@ -23,13 +23,11 @@ EVTYPE_IBS      = 3
 #
 def create_event(name, comm, dso, symbol, raw_buf):
         if (len(raw_buf) == 144):
-                event = PebsEvent(name, comm, dso, symbol, raw_buf)
+                return PebsEvent(name, comm, dso, symbol, raw_buf)
         elif (len(raw_buf) == 176):
-                event = PebsNHM(name, comm, dso, symbol, raw_buf)
+                return PebsNHM(name, comm, dso, symbol, raw_buf)
         else:
-                event = PerfEvent(name, comm, dso, symbol, raw_buf)
-
-        return event
+                return PerfEvent(name, comm, dso, symbol, raw_buf)
 
 class PerfEvent(object):
         event_num = 0
@@ -53,7 +51,7 @@ class PerfEvent(object):
 class PebsEvent(PerfEvent):
         pebs_num = 0
         def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_PEBS):
-                tmp_buf=raw_buf[0:80]
+                tmp_buf = raw_buf[:80]
                 flags, ip, ax, bx, cx, dx, si, di, bp, sp = struct.unpack('QQQQQQQQQQ', tmp_buf)
                 self.flags = flags
                 self.ip    = ip

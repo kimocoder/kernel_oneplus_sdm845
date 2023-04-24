@@ -2,6 +2,7 @@
 
 """Find Kconfig symbols that are referenced but not defined."""
 
+
 # (c) 2014-2016 Valentin Rothberg <valentinrothberg@gmail.com>
 # (c) 2014 Stefan Hengelein <stefan.hengelein@fau.de>
 #
@@ -22,7 +23,7 @@ from multiprocessing import Pool, cpu_count
 OPERATORS = r"&|\(|\)|\||\!"
 SYMBOL = r"(?:\w*[A-Z0-9]\w*){2,}"
 DEF = r"^\s*(?:menu){,1}config\s+(" + SYMBOL + r")\s*"
-EXPR = r"(?:" + OPERATORS + r"|\s|" + SYMBOL + r")+"
+EXPR = f"(?:{OPERATORS}" + r"|\s|" + SYMBOL + r")+"
 DEFAULT = r"default\s+.*?(?:if\s.+){,1}"
 STMT = r"^\s*(?:if|select|depends\s+on|(?:" + DEFAULT + r"))\s+" + EXPR
 SOURCE_SYMBOL = r"(?:\W|\b)+[D]{,1}CONFIG_(" + SYMBOL + r")"
@@ -92,14 +93,13 @@ def parse_options():
         sys.exit("Please specify valid input in the following format: "
                  "\'commit1..commit2\'")
 
-    if args.commit or args.diff:
-        if not args.force and tree_is_dirty():
-            sys.exit("The current Git tree is dirty (see 'git status').  "
-                     "Running this script may\ndelete important data since it "
-                     "calls 'git reset --hard' for some performance\nreasons. "
-                     " Please run this script in a clean Git tree or pass "
-                     "'--force' if you\nwant to ignore this warning and "
-                     "continue.")
+    if (args.commit or args.diff) and not args.force and tree_is_dirty():
+        sys.exit("The current Git tree is dirty (see 'git status').  "
+                 "Running this script may\ndelete important data since it "
+                 "calls 'git reset --hard' for some performance\nreasons. "
+                 " Please run this script in a clean Git tree or pass "
+                 "'--force' if you\nwant to ignore this warning and "
+                 "continue.")
 
     if args.commit:
         args.find = False
@@ -121,11 +121,10 @@ def main():
     COLOR = args.color and sys.stdout.isatty()
 
     if args.sim and not args.commit and not args.diff:
-        sims = find_sims(args.sim, args.ignore)
-        if sims:
-            print("%s: %s" % (yel("Similar symbols"), ', '.join(sims)))
+        if sims := find_sims(args.sim, args.ignore):
+            print(f"""{yel("Similar symbols")}: {', '.join(sims)}""")
         else:
-            print("%s: no similar symbols found" % yel("Similar symbols"))
+            print(f'{yel("Similar symbols")}: no similar symbols found')
         sys.exit(0)
 
     # dictionary of (un)defined symbols
@@ -139,7 +138,7 @@ def main():
         commit_a = None
         commit_b = None
         if args.commit:
-            commit_a = args.commit + "~"
+            commit_a = f"{args.commit}~"
             commit_b = args.commit
         elif args.diff:
             split = args.diff.split("..")
@@ -159,20 +158,18 @@ def main():
         # report cases that are present for the commit but not before
         for symbol in sorted(undefined_b):
             # symbol has not been undefined before
-            if symbol not in undefined_a:
-                files = sorted(undefined_b.get(symbol))
-                undefined[symbol] = files
-            # check if there are new files that reference the undefined symbol
-            else:
-                files = sorted(undefined_b.get(symbol) -
-                               undefined_a.get(symbol))
-                if files:
+            if symbol in undefined_a:
+                if files := sorted(
+                    undefined_b.get(symbol) - undefined_a.get(symbol)
+                ):
                     undefined[symbol] = files
 
+            else:
+                files = sorted(undefined_b.get(symbol))
+                undefined[symbol] = files
         # reset to head
         reset(head)
 
-    # default to check the entire tree
     else:
         undefined, defined = check_symbols(args.ignore)
 
@@ -181,19 +178,18 @@ def main():
         print(red(symbol))
 
         files = sorted(undefined.get(symbol))
-        print("%s: %s" % (yel("Referencing files"), ", ".join(files)))
+        print(f'{yel("Referencing files")}: {", ".join(files)}')
 
         sims = find_sims(symbol, args.ignore, defined)
         sims_out = yel("Similar symbols")
         if sims:
-            print("%s: %s" % (sims_out, ', '.join(sims)))
+            print(f"{sims_out}: {', '.join(sims)}")
         else:
-            print("%s: %s" % (sims_out, "no similar symbols found"))
+            print(f"{sims_out}: no similar symbols found")
 
         if args.find:
-            print("%s:" % yel("Commits changing symbol"))
-            commits = find_commits(symbol, args.diff)
-            if commits:
+            print(f'{yel("Commits changing symbol")}:')
+            if commits := find_commits(symbol, args.diff):
                 for commit in commits:
                     commit = commit.split(" ", 1)
                     print("\t- %s (\"%s\")" % (yel(commit[0]), commit[1]))
@@ -243,10 +239,7 @@ def tree_is_dirty():
     """Return true if the current working tree is dirty (i.e., if any file has
     been added, deleted, modified, renamed or copied but not committed)."""
     stdout = execute(["git", "status", "--porcelain"])
-    for line in stdout:
-        if re.findall(r"[URMADC]{1}", line[:2]):
-            return True
-    return False
+    return any(re.findall(r"[URMADC]{1}", line[:2]) for line in stdout)
 
 
 def get_head():
@@ -272,15 +265,10 @@ def find_sims(symbol, ignore, defined=[]):
         return sorted(difflib.get_close_matches(symbol, set(defined), 10))
 
     pool = Pool(cpu_count(), init_worker)
-    kfiles = []
-    for gitfile in get_files():
-        if REGEX_FILE_KCONFIG.match(gitfile):
-            kfiles.append(gitfile)
-
-    arglist = []
-    for part in partition(kfiles, cpu_count()):
-        arglist.append((part, ignore))
-
+    kfiles = [
+        gitfile for gitfile in get_files() if REGEX_FILE_KCONFIG.match(gitfile)
+    ]
+    arglist = [(part, ignore) for part in partition(kfiles, cpu_count())]
     for res in pool.map(parse_kconfig_files, arglist):
         defined.extend(res[0])
 
@@ -294,14 +282,15 @@ def get_files():
     if len(stdout) > 0 and stdout[-1] == "\n":
         stdout = stdout[:-1]
 
-    files = []
-    for gitfile in stdout.rsplit("\n"):
-        if ".git" in gitfile or "ChangeLog" in gitfile or      \
-                ".log" in gitfile or os.path.isdir(gitfile) or \
-                gitfile.startswith("tools/"):
-            continue
-        files.append(gitfile)
-    return files
+    return [
+        gitfile
+        for gitfile in stdout.rsplit("\n")
+        if ".git" not in gitfile
+        and "ChangeLog" not in gitfile
+        and ".log" not in gitfile
+        and not os.path.isdir(gitfile)
+        and not gitfile.startswith("tools/")
+    ]
 
 
 def check_symbols(ignore):
@@ -323,33 +312,28 @@ def check_symbols_helper(pool, ignore):
     source_files = []
     kconfig_files = []
     defined_symbols = []
-    referenced_symbols = dict()  # {file: [symbols]}
+    referenced_symbols = {}
 
     for gitfile in get_files():
         if REGEX_FILE_KCONFIG.match(gitfile):
             kconfig_files.append(gitfile)
-        else:
-            if ignore and not re.match(ignore, gitfile):
-                continue
+        elif not ignore or re.match(ignore, gitfile):
             # add source files that do not match the ignore pattern
             source_files.append(gitfile)
 
     # parse source files
     arglist = partition(source_files, cpu_count())
     for res in pool.map(parse_source_files, arglist):
-        referenced_symbols.update(res)
+        referenced_symbols |= res
 
-    # parse kconfig files
-    arglist = []
-    for part in partition(kconfig_files, cpu_count()):
-        arglist.append((part, ignore))
+    arglist = [(part, ignore) for part in partition(kconfig_files, cpu_count())]
     for res in pool.map(parse_kconfig_files, arglist):
         defined_symbols.extend(res[0])
         referenced_symbols.update(res[1])
     defined_symbols = set(defined_symbols)
 
     # inverse mapping of referenced_symbols to dict(symbol: [files])
-    inv_map = dict()
+    inv_map = {}
     for _file, symbols in referenced_symbols.items():
         for symbol in symbols:
             inv_map[symbol] = inv_map.get(symbol, set())
@@ -359,14 +343,12 @@ def check_symbols_helper(pool, ignore):
     undefined = {}  # {symbol: [files]}
     for symbol in sorted(referenced_symbols):
         # filter some false positives
-        if symbol == "FOO" or symbol == "BAR" or \
-                symbol == "FOO_BAR" or symbol == "XXX":
+        if symbol in ["FOO", "BAR", "FOO_BAR", "XXX"]:
             continue
-        if symbol not in defined_symbols:
-            if symbol.endswith("_MODULE"):
-                # avoid false positives for kernel modules
-                if symbol[:-len("_MODULE")] in defined_symbols:
-                    continue
+        if symbol not in defined_symbols and (
+            not symbol.endswith("_MODULE")
+            or symbol[: -len("_MODULE")] not in defined_symbols
+        ):
             undefined[symbol] = referenced_symbols.get(symbol)
     return undefined, defined_symbols
 
@@ -374,10 +356,7 @@ def check_symbols_helper(pool, ignore):
 def parse_source_files(source_files):
     """Parse each source file in @source_files and return dictionary with source
     files as keys and lists of references Kconfig symbols as values."""
-    referenced_symbols = dict()
-    for sfile in source_files:
-        referenced_symbols[sfile] = parse_source_file(sfile)
-    return referenced_symbols
+    return {sfile: parse_source_file(sfile) for sfile in source_files}
 
 
 def parse_source_file(sfile):
@@ -395,11 +374,9 @@ def parse_source_file(sfile):
         if "CONFIG_" not in line:
             continue
         symbols = REGEX_SOURCE_SYMBOL.findall(line)
-        for symbol in symbols:
-            if not REGEX_FILTER_SYMBOLS.search(symbol):
-                continue
-            references.append(symbol)
-
+        references.extend(
+            symbol for symbol in symbols if REGEX_FILTER_SYMBOLS.search(symbol)
+        )
     return references
 
 
@@ -415,7 +392,7 @@ def parse_kconfig_files(args):
     kconfig_files = args[0]
     ignore = args[1]
     defined_symbols = []
-    referenced_symbols = dict()
+    referenced_symbols = {}
 
     for kfile in kconfig_files:
         defined, references = parse_kconfig_file(kfile)
@@ -463,12 +440,11 @@ def parse_kconfig_file(kfile):
                 line = lines[i]
                 line = line.strip('\n')
                 symbols.extend(get_symbols_in_line(line))
-            for symbol in set(symbols):
-                if REGEX_NUMERIC.match(symbol):
-                    # ignore numeric values
-                    continue
-                references.append(symbol)
-
+            references.extend(
+                symbol
+                for symbol in set(symbols)
+                if not REGEX_NUMERIC.match(symbol)
+            )
     return defined, references
 
 

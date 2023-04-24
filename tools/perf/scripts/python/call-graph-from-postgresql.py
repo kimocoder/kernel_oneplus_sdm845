@@ -82,7 +82,7 @@ class TreeItem():
 		query = QSqlQuery(self.db)
 		ret = query.exec_('SELECT id, comm FROM comms')
 		if not ret:
-			raise Exception("Query failed: " + query.lastError().text())
+			raise Exception(f"Query failed: {query.lastError().text()}")
 		while query.next():
 			if not query.value(0):
 				continue
@@ -98,9 +98,11 @@ class TreeItem():
 		self.child_items = []
 		self.child_count = 0
 		query = QSqlQuery(self.db)
-		ret = query.exec_('SELECT thread_id, ( SELECT pid FROM threads WHERE id = thread_id ), ( SELECT tid FROM threads WHERE id = thread_id ) FROM comm_threads WHERE comm_id = ' + str(comm_id))
+		ret = query.exec_(
+			f'SELECT thread_id, ( SELECT pid FROM threads WHERE id = thread_id ), ( SELECT tid FROM threads WHERE id = thread_id ) FROM comm_threads WHERE comm_id = {str(comm_id)}'
+		)
 		if not ret:
-			raise Exception("Query failed: " + query.lastError().text())
+			raise Exception(f"Query failed: {query.lastError().text()}")
 		while query.next():
 			child_item = TreeItem(self.db, self.child_count, self)
 			self.child_items.append(child_item)
@@ -110,7 +112,7 @@ class TreeItem():
 	def setUpLevel2(self, comm_id, thread_id, pid, tid):
 		self.comm_id = comm_id
 		self.thread_id = thread_id
-		self.data[0] = str(pid) + ":" + str(tid)
+		self.data[0] = f"{str(pid)}:{str(tid)}"
 
 	def getChildItem(self, row):
 		return self.child_items[row]
@@ -155,15 +157,11 @@ class TreeItem():
 	def selectCalls(self):
 		self.query_done = True;
 		query = QSqlQuery(self.db)
-		ret = query.exec_('SELECT id, call_path_id, branch_count, call_time, return_time, '
-				  '( SELECT name FROM symbols WHERE id = ( SELECT symbol_id FROM call_paths WHERE id = call_path_id ) ), '
-				  '( SELECT short_name FROM dsos WHERE id = ( SELECT dso_id FROM symbols WHERE id = ( SELECT symbol_id FROM call_paths WHERE id = call_path_id ) ) ), '
-				  '( SELECT ip FROM call_paths where id = call_path_id ) '
-				  'FROM calls WHERE parent_call_path_id = ' + str(self.call_path_id) + ' AND comm_id = ' + str(self.comm_id) + ' AND thread_id = ' + str(self.thread_id) +
-				  'ORDER BY call_path_id')
+		ret = query.exec_(
+			f'SELECT id, call_path_id, branch_count, call_time, return_time, ( SELECT name FROM symbols WHERE id = ( SELECT symbol_id FROM call_paths WHERE id = call_path_id ) ), ( SELECT short_name FROM dsos WHERE id = ( SELECT dso_id FROM symbols WHERE id = ( SELECT symbol_id FROM call_paths WHERE id = call_path_id ) ) ), ( SELECT ip FROM call_paths where id = call_path_id ) FROM calls WHERE parent_call_path_id = {str(self.call_path_id)} AND comm_id = {str(self.comm_id)} AND thread_id = {str(self.thread_id)}ORDER BY call_path_id'
+		)
 		if not ret:
-			raise Exception("Query failed: " + query.lastError().text())
-		last_call_path_id = 0
+			raise Exception(f"Query failed: {query.lastError().text()}")
 		name = ""
 		dso = ""
 		count = 0
@@ -171,6 +169,7 @@ class TreeItem():
 		total_branch_count = 0
 		time = 0
 		total_time = 0
+		last_call_path_id = 0
 		while query.next():
 			if query.value(1) == last_call_path_id:
 				count += 1
@@ -229,16 +228,12 @@ class TreeModel(QAbstractItemModel):
 		return self.root.columnCount()
 
 	def rowCount(self, parent):
-		if parent.isValid():
-			parent_item = parent.internalPointer()
-		else:
-			parent_item = self.root
+		parent_item = parent.internalPointer() if parent.isValid() else self.root
 		return parent_item.childCount()
 
 	def headerData(self, section, orientation, role):
-		if role == Qt.TextAlignmentRole:
-			if section > 1:
-				return Qt.AlignRight
+		if role == Qt.TextAlignmentRole and section > 1:
+			return Qt.AlignRight
 		if role != Qt.DisplayRole:
 			return None
 		if orientation != Qt.Horizontal:
@@ -253,17 +248,13 @@ class TreeModel(QAbstractItemModel):
 		return self.createIndex(parent_item.getRow(), 0, parent_item)
 
 	def index(self, row, column, parent):
-		if parent.isValid():
-			parent_item = parent.internalPointer()
-		else:
-			parent_item = self.root
+		parent_item = parent.internalPointer() if parent.isValid() else self.root
 		child_item = parent_item.getChildItem(row)
 		return self.createIndex(row, column, child_item)
 
 	def data(self, index, role):
-		if role == Qt.TextAlignmentRole:
-			if index.column() > 1:
-				return Qt.AlignRight
+		if role == Qt.TextAlignmentRole and index.column() > 1:
+			return Qt.AlignRight
 		if role != Qt.DisplayRole:
 			return None
 		index_item = index.internalPointer()
@@ -275,7 +266,7 @@ class MainWindow(QMainWindow):
 		super(MainWindow, self).__init__(parent)
 
 		self.setObjectName("MainWindow")
-		self.setWindowTitle("Call Graph: " + dbname)
+		self.setWindowTitle(f"Call Graph: {dbname}")
 		self.move(100, 100)
 		self.resize(800, 600)
 		style = self.style()

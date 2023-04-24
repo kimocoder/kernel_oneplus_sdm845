@@ -109,16 +109,16 @@ def read_u16(buffer):
 
 def read_u32(buffer):
     if get_target_endianness() == LITTLE_ENDIAN:
-        return read_u16(buffer[0:2]) + (read_u16(buffer[2:4]) << 16)
+        return read_u16(buffer[:2]) + (read_u16(buffer[2:4]) << 16)
     else:
-        return read_u16(buffer[2:4]) + (read_u16(buffer[0:2]) << 16)
+        return read_u16(buffer[2:4]) + (read_u16(buffer[:2]) << 16)
 
 
 def read_u64(buffer):
     if get_target_endianness() == LITTLE_ENDIAN:
-        return read_u32(buffer[0:4]) + (read_u32(buffer[4:8]) << 32)
+        return read_u32(buffer[:4]) + (read_u32(buffer[4:8]) << 32)
     else:
-        return read_u32(buffer[4:8]) + (read_u32(buffer[0:4]) << 32)
+        return read_u32(buffer[4:8]) + (read_u32(buffer[:4]) << 32)
 
 
 target_arch = None
@@ -127,11 +127,10 @@ target_arch = None
 def is_target_arch(arch):
     if hasattr(gdb.Frame, 'architecture'):
         return arch in gdb.newest_frame().architecture().name()
-    else:
-        global target_arch
-        if target_arch is None:
-            target_arch = gdb.execute("show architecture", to_string=True)
-        return arch in target_arch
+    global target_arch
+    if target_arch is None:
+        target_arch = gdb.execute("show architecture", to_string=True)
+    return arch in target_arch
 
 
 GDBSERVER_QEMU = 0
@@ -178,7 +177,7 @@ def gdb_eval_or_none(expresssion):
 
 def dentry_name(d):
     parent = d['d_parent']
-    if parent == d or parent == 0:
+    if parent in [d, 0]:
         return ""
     p = dentry_name(d['d_parent']) + "/"
     return p + d['d_iname'].string()
